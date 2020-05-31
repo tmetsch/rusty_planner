@@ -1,0 +1,19 @@
+[package]
+name = "rusty_planner"
+version = "0.1.0"
+authors = ["tmetsch"]
+edition = "2018"
+
+[dependencies]
+
+[[example]]
+name = "example_0"
+path = "examples/example_0.rs"
+
+[[example]]
+name = "example_1"
+path = "examples/example_1.rs"
+
+[[example]]
+name = "example_2"
+path = "examples/example_2.rs"
