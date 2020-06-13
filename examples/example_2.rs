@@ -9,7 +9,7 @@ struct Robots {
 }
 
 ///
-/// Simple robotic example. Robot can move diagonally or following the edges of a 10x10 field.
+/// Simple robotic example. Robot can move diagonally or follow the edges of a 10x10 field.
 ///
 impl planner::ProblemSpace for Robots {
     type State = (i32, i32);

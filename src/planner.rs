@@ -15,4 +15,42 @@ pub trait ProblemSpace {
     fn succ(&self, _: &Self::State) -> Self::Iter;
     /// Given a state calculates the predecessor states.
     fn pred(&self, _: &Self::State) -> Self::Iter;
+    /// Called when obstacle was detected, or start state transitioned.
+    fn update(&mut self, _: &Self::State) {}
+    // TODO: check if we want to add callback here.
+}
+
+#[cfg(test)]
+mod tests {
+    use std::vec;
+
+    use crate::planner;
+    use crate::planner::ProblemSpace;
+
+    struct Environment {}
+
+    impl planner::ProblemSpace for Environment {
+        type State = usize;
+        type Iter = vec::IntoIter<(Self::State, f64)>;
+        fn heuristic(&self, _: &Self::State, _: &Self::State) -> f64 { 0.0 }
+        fn succ(&self, _: &Self::State) -> Self::Iter { vec![].into_iter() }
+        fn pred(&self, s: &Self::State) -> Self::Iter { self.succ(s) }
+    }
+
+    // Test for success.
+
+    #[test]
+    fn test_update_for_success() {
+        let mut env = Environment {};
+        env.update(&1);
+    }
+
+    #[test]
+    fn test_trait_for_success() {
+        let mut env = Environment {};
+        env.update(&1);
+        env.heuristic(&0, &1);
+        env.succ(&0);
+        env.pred(&0);
+    }
 }

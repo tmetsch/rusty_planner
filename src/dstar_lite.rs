@@ -1,4 +1,5 @@
 use std::collections;
+use std::sync::mpsc;
 
 use crate::planner;
 use crate::util;
@@ -16,7 +17,7 @@ fn key(data: &util::StateData, h: f64) -> (f64, f64) {
 }
 
 fn update_state<PS: planner::ProblemSpace>(
-    ps: &PS,
+    ps: &mut PS,
     s: PS::State,
     start: PS::State,
     goal: PS::State,
@@ -48,7 +49,7 @@ fn update_state<PS: planner::ProblemSpace>(
 }
 
 fn compute_path<PS: planner::ProblemSpace>(
-    ps: &PS,
+    ps: &mut PS,
     start: PS::State,
     goal: PS::State,
     data: &mut collections::HashMap<PS::State, util::StateData>,
@@ -73,23 +74,12 @@ fn compute_path<PS: planner::ProblemSpace>(
     }
 }
 
-///
-/// Find a plan to get from start to goal, given a problem space.
-///
-pub fn solve<PS: planner::ProblemSpace>(
-    ps: &PS, start: PS::State, goal: PS::State) -> Vec<PS::State> {
-    let mut open: collections::BinaryHeap<util::HeapEntry<PS::State>> =
-        collections::BinaryHeap::new();
-    let mut data: collections::HashMap<PS::State, util::StateData> =
-        collections::HashMap::new();
-
-    data.insert(start, util::StateData { g: f64::INFINITY, rhs: f64::INFINITY });
-    data.insert(goal, util::StateData { g: f64::INFINITY, rhs: 0.0 });
-    open.push(util::HeapEntry::new_entry(
-        goal, key(&data[&goal], ps.heuristic(&goal, &start))));
-
-    compute_path(ps, start, goal, &mut data, &mut open);
-
+fn publish_path<PS: planner::ProblemSpace>(
+    ps: &mut PS,
+    start: PS::State,
+    goal: PS::State,
+    data: &mut collections::HashMap<PS::State, util::StateData>,
+    callback: fn(Vec<PS::State>)) {
     // TODO: check if useful to implement action ids to not only output the states but also the
     //   actions (aka. the path/edges -> the road taken).
     let mut res = Vec::new();
@@ -106,20 +96,63 @@ pub fn solve<PS: planner::ProblemSpace>(
         res.push(next_state);
         curr = next_state;
     }
-    // TODO: implement loop looking for obstacles & update accordingly...
-    res
+    callback(res);
+}
+
+///
+/// Find a plan to get from start to goal, given a problem space.
+///
+/// *Note*: This will run forever! Signal that you reach the goal state to let it terminate.
+///
+pub fn solve<PS: planner::ProblemSpace>(
+    ps: &mut PS,
+    start: PS::State,
+    goal: PS::State,
+    rx: mpsc::Receiver<(PS::State, PS::State)>,
+    callback: fn(Vec<PS::State>)) {
+
+    // TODO: add key_modifier parameter.
+    let mut start_int: PS::State = start;
+    let mut open: collections::BinaryHeap<util::HeapEntry<PS::State>> =
+        collections::BinaryHeap::new();
+    let mut data: collections::HashMap<PS::State, util::StateData> =
+        collections::HashMap::new();
+
+    data.insert(start_int, util::StateData { g: f64::INFINITY, rhs: f64::INFINITY });
+    data.insert(goal, util::StateData { g: f64::INFINITY, rhs: 0.0 });
+    open.push(util::HeapEntry::new_entry(
+        goal, key(&data[&goal], ps.heuristic(&goal, &start_int))));
+
+    compute_path(ps, start_int, goal, &mut data, &mut open);
+    publish_path(ps, start_int, goal, &mut data, callback);
+    loop {
+        let (u, new_start) = rx.recv().unwrap();
+        if new_start == goal {
+            break;
+        }
+        start_int = new_start;
+        ps.update(&u);
+        update_state(ps, u, start_int, goal, &mut data, &mut open);
+        compute_path(ps, start_int, goal, &mut data, &mut open);
+        publish_path(ps, start_int, goal, &mut data, callback);
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use std::collections;
+    use std::sync::mpsc;
+    use std::thread;
     use std::vec;
 
     use crate::dstar_lite;
+    use crate::dstar_lite::publish_path;
     use crate::planner;
     use crate::util;
 
-    struct SimpleGraph {}
+    struct SimpleGraph {
+        ts: i32
+    }
 
     impl planner::ProblemSpace for SimpleGraph {
         type State = i32;
@@ -129,22 +162,32 @@ mod tests {
         }
 
         fn succ(&self, s: &Self::State) -> Self::Iter {
-            match *s {
-                0 => vec![(1, 1.0)].into_iter(),
-                1 => vec![(2, 1.0), (3, 1.0)].into_iter(),
-                2 => vec![(4, 1.0)].into_iter(),
+            match (*s, self.ts) {
+                (0, _) => vec![(1, 1.0)].into_iter(),
+                (1, _) => vec![(2, 1.0), (3, 1.0)].into_iter(),
+                (2, 0) => vec![(4, 1.0)].into_iter(),
+                (2, _) => vec![(4, 7.0)].into_iter(),
                 _ => vec![(4, 5.0)].into_iter()
             }
         }
 
         fn pred(&self, s: &Self::State) -> Self::Iter {
-            match *s {
-                1 => vec![(0, 1.0)].into_iter(),
-                2 => vec![(1, 1.0)].into_iter(),
-                3 => vec![(1, 1.0)].into_iter(),
+            match (*s, self.ts) {
+                (1, _) => vec![(0, 1.0)].into_iter(),
+                (2, _) => vec![(1, 1.0)].into_iter(),
+                (3, _) => vec![(1, 1.0)].into_iter(),
                 _ => vec![(2, 1.0), (3, 5.0)].into_iter()
             }
         }
+        fn update(&mut self, _: &Self::State) {
+            self.ts += 1;
+        }
+    }
+
+    fn callback(_: vec::Vec<i32>) {}
+
+    fn callback_test(res: vec::Vec<i32>) {
+        assert_eq!(res, [1, 2, 4]);
     }
 
     // Test for success.
@@ -157,7 +200,7 @@ mod tests {
 
     #[test]
     fn test_update_state_for_success() {
-        let ps = SimpleGraph {};
+        let mut ps = SimpleGraph { ts: 0 };
         let start = 0;
         let goal = 4;
 
@@ -170,12 +213,12 @@ mod tests {
             goal, dstar_lite::key(&data[&goal], 0.0)));
 
         let s = 1;
-        dstar_lite::update_state(&ps, s, start, goal, &mut data, &mut open);
+        dstar_lite::update_state(&mut ps, s, start, goal, &mut data, &mut open);
     }
 
     #[test]
     fn test_compute_path_for_success() {
-        let ps = SimpleGraph {};
+        let mut ps = SimpleGraph { ts: 0 };
         let start = 0;
         let goal = 4;
 
@@ -187,13 +230,30 @@ mod tests {
         open.push(util::HeapEntry::new_entry(
             goal, dstar_lite::key(&data[&goal], 0.0)));
 
-        dstar_lite::compute_path(&ps, start, goal, &mut data, &mut open);
+        dstar_lite::compute_path(&mut ps, start, goal, &mut data, &mut open);
+    }
+
+    #[test]
+    fn test_publish_path_for_success() {
+        let mut ps = SimpleGraph { ts: 0 };
+        let start = 0;
+        let goal = 1;
+        let mut data = collections::HashMap::new();
+        data.insert(start, util::StateData { g: 1.0, rhs: 1.0 });
+        data.insert(goal, util::StateData { g: 0.0, rhs: 0.0 });
+
+        publish_path(&mut ps, start, goal, &mut data, callback)
     }
 
     #[test]
     fn test_solve_for_success() {
-        let ps = SimpleGraph {};
-        dstar_lite::solve(&ps, 0, 4);
+        let mut ps = SimpleGraph { ts: 0 };
+        let (tx, rx) = mpsc::channel();
+        let plnr = thread::spawn(move || {
+            dstar_lite::solve(&mut ps, 0, 4, rx, callback);
+        });
+        tx.send((-1, 4)).unwrap();
+        plnr.join().unwrap();
     }
 
     // Test for failure.
@@ -214,7 +274,7 @@ mod tests {
 
     #[test]
     fn test_update_state_for_sanity() {
-        let ps = SimpleGraph {};
+        let mut ps = SimpleGraph { ts: 0 };
         let start = 0;
         let goal = 4;
 
@@ -225,12 +285,12 @@ mod tests {
 
         // s not visited...
         let s = 1;
-        dstar_lite::update_state(&ps, s, start, goal, &mut data, &mut open);
+        dstar_lite::update_state(&mut ps, s, start, goal, &mut data, &mut open);
         assert_eq!(data.contains_key(&s), true);
 
         // s != goal
         let s = 2;
-        dstar_lite::update_state(&ps, s, start, goal, &mut data, &mut open);
+        dstar_lite::update_state(&mut ps, s, start, goal, &mut data, &mut open);
         assert_eq!(data[&s].rhs, 2.0);  // g(goal) == 1.0 + cost of 1.0
 
         // s should have been added to open queue...
@@ -244,8 +304,23 @@ mod tests {
     }
 
     #[test]
+    fn test_publish_path_for_sanity() {
+        let mut ps = SimpleGraph { ts: 0 };
+        let start = 0;
+        let goal = 4;
+        let mut data = collections::HashMap::new();
+        data.insert(start, util::StateData { g: 4.0, rhs: 4.0 });
+        data.insert(1, util::StateData { g: 3.0, rhs: 3.0 });
+        data.insert(2, util::StateData { g: 2.0, rhs: 2.0 });
+        data.insert(3, util::StateData { g: f64::INFINITY, rhs: f64::INFINITY });
+        data.insert(goal, util::StateData { g: 0.0, rhs: 0.0 });
+
+        publish_path(&mut ps, start, goal, &mut data, callback_test)
+    }
+
+    #[test]
     fn test_compute_path_for_sanity() {
-        let ps = SimpleGraph {};
+        let mut ps = SimpleGraph { ts: 0 };
         let start = 0;
         let goal = 4;
 
@@ -257,7 +332,7 @@ mod tests {
         open.push(util::HeapEntry::new_entry(
             goal, dstar_lite::key(&data[&goal], 0.0)));
 
-        dstar_lite::compute_path(&ps, start, goal, &mut data, &mut open);
+        dstar_lite::compute_path(&mut ps, start, goal, &mut data, &mut open);
 
         assert_eq!(data[&0].g, 3.0);  // 3 steps to goal possible ...
         assert_eq!(data[&1].g, 2.0);  // 2 steps ...
@@ -268,7 +343,13 @@ mod tests {
 
     #[test]
     fn test_solve_for_sanity() {
-        let ps = SimpleGraph {};
-        assert_eq!(dstar_lite::solve(&ps, 0, 4), vec![1, 2, 4])
+        let mut ps = SimpleGraph { ts: 0 };
+        let (tx, rx) = mpsc::channel();
+        let plnr = thread::spawn(move || {
+            dstar_lite::solve(&mut ps, 0, 4, rx, callback);
+        });
+        tx.send((2, 1)).unwrap();
+        tx.send((-1, 4)).unwrap();
+        plnr.join().unwrap();
     }
 }

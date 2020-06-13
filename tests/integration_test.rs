@@ -1,5 +1,7 @@
 extern crate rusty_planner;
 
+use std::sync::mpsc;
+use std::thread;
 use std::vec;
 
 #[test]
@@ -39,7 +41,16 @@ fn test_simple_example() {
         assert_eq!(path, [1, 2, 4]);
     }
 
-    let example = Example {};
+    let mut example = Example {};
+
+    // Anytime Dynamic A*
     rusty_planner::any_dyn_astar::solve(&example, 0, 4, callback);
-    assert_eq!(rusty_planner::dstar_lite::solve(&example, 0, 4), [1, 2, 4]);
+
+    // D* Lite
+    let (tx, rx) = mpsc::channel();
+    let plnr = thread::spawn(move || {
+        rusty_planner::dstar_lite::solve(&mut example, 0, 4, rx, callback);
+    });
+    tx.send((-1, 4)).unwrap();
+    plnr.join().unwrap();
 }

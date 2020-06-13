@@ -85,8 +85,6 @@ fn compute_path<PS: planner::ProblemSpace>(
     }
 }
 
-
-// TODO: figure out if pub trait should have callback, or run in thread, or ...
 ///
 /// Given an problem space will try to find most efficient path from start to goal.
 ///
