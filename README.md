@@ -20,9 +20,10 @@ run:
        Digital Entertainment (AIIDE’05), 2005, https://dl.acm.org/doi/10.5555/3022473.3022494. 
      * R. Nissim and R. Brafman, **Distributed Heuristic Forward Search for Multi-Agent Systems**. arXiv, 2013. 
        https://arxiv.org/abs/1306.5858
+     * S. Gelly, Y. Wang, R. Munos, and O. Teytaud **Modification of UCT with Patterns in Monte-Carlo Go**. Technical report, INRIA, 2006, https://doi.org/10.1007%2F11871842_29.
      * O. Shehory and S. Kraus, **Task allocation via coalition formation among autonomous agents**. 14th international
        joint conference on Artificial intelligence - Volume 1 (IJCAI’95), 1995, 
-       https://dl.acm.org/doi/10.5555/1625855.1625941
+       https://dl.acm.org/doi/10.5555/1625855.1625941.
 
 **_Note_**: This library is still work in progress - and mostly for me to get familiar with Rust. Use at 
 your own risk; refactorings & bigger changes might still happen.  
