@@ -38,4 +38,3 @@ solve real world problems & deliver efficient solutions. Recommended reads inclu
 NASA's JPL [Artificial Intelligence group](https://ai.jpl.nasa.gov/) has done tons of research in this area - especially 
 their methods of controlling autonomous space probes using planners & execution components are interesting; Imagine how 
 cool it would be if those concept would be embedded in future control planes...
- 
