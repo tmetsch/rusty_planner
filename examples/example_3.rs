@@ -47,8 +47,7 @@ impl planner::ProblemSpace for Maze {
 
     fn update(&mut self, state: &Self::State) {
         // removes obstacle @ (3, 4)
-        if state.0 == 3 && state.1 == 4
-        {
+        if state.0 == 3 && state.1 == 4 {
             self.maze[state.0][state.1] = 1.;
         }
     }

@@ -15,7 +15,7 @@ pub struct HeapEntry<S> {
 impl<S> HeapEntry<S> {
     pub fn new_entry(state: S, keys: (f64, f64)) -> HeapEntry<S> {
         HeapEntry {
-            state: state.into(),
+            state,
             keys,
         }
     }

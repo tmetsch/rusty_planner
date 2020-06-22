@@ -25,9 +25,7 @@ fn update_state<PS: planner::ProblemSpace>(
     incons: &mut Vec<PS::State>,
     eps: f64,
 ) {
-    if !data.contains_key(&s) {
-        data.insert(s, util::StateData { rhs: f64::INFINITY, g: f64::INFINITY });
-    }
+    data.entry(s).or_insert(util::StateData { rhs: f64::INFINITY, g: f64::INFINITY });
     if s != goal {
         let mut tmp = f64::INFINITY;
         for item in ps.succ(&s) {
@@ -44,7 +42,7 @@ fn update_state<PS: planner::ProblemSpace>(
             This indicates there are cycles in the state space.");
         }
     }
-    if data[&s].g != data[&s].rhs {
+    if data[&s].g as i64 != data[&s].rhs as i64 {
         if !closed.contains(&s) {
             open.push(util::HeapEntry::new_entry(
                 s, key(&data[&s], ps.heuristic(&s, &start), eps)));
@@ -67,7 +65,7 @@ fn compute_path<PS: planner::ProblemSpace>(
     while (!open.is_empty()) &&
         ((open.peek().unwrap().keys < key(&data[&start],
                                           ps.heuristic(&start, &start), eps)) ||
-            (data[&start].rhs != data[&start].g)) {
+            (data[&start].rhs as i64 != data[&start].g as i64)) {
         let s: util::HeapEntry<PS::State> = open.pop().unwrap();
         if data[&s.state].g > data[&s.state].rhs {
             data.get_mut(&s.state).unwrap().g = data[&s.state].rhs;

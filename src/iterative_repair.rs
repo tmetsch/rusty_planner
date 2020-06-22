@@ -38,10 +38,8 @@ pub trait Problem {
 ///     }
 /// }
 ///
-/// fn main() {
-///     let mut ps = Problem {};
-///     iterative_repair::solve(&mut ps, 10);
-/// }
+/// let mut ps = Problem {};
+/// iterative_repair::solve(&mut ps, 10);
 /// ```
 ///
 pub fn solve<PS: Problem>(ps: &mut PS, steps: i32) -> (bool, i32) {
