@@ -5,6 +5,7 @@ authors = ["tmetsch"]
 edition = "2018"
 
 [dependencies]
+zmq = "0.9"
 
 [[example]]
 name = "example_0"

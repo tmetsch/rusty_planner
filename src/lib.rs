@@ -11,3 +11,6 @@ pub mod dstar_lite;
 pub mod iterative_repair;
 /// Module with some generic traits used by various algorithms.
 pub mod planner;
+
+/// Basic support for multi-agent distributed systems.
+pub mod agent;

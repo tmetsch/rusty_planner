@@ -82,7 +82,7 @@ fn main() {
         dstar_lite::solve(&mut maze, (5, 0), (0, 5), rx, callback);
     });
 
-    // remote obstacle @ (3, 4) & move robot to coord (5, 2).
+    // remove obstacle @ (3, 4) & move robot to coord (5, 2).
     tx.send(((3, 4), (5, 2))).unwrap();
     // signal the planner that we've reached the goal.
     tx.send(((0, 0), (0, 5))).unwrap();

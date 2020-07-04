@@ -102,6 +102,7 @@ fn publish_path<PS: planner::ProblemSpace>(
 ///
 /// *Note*: This will run forever! Signal that you reach the goal state to let it terminate.
 ///
+// TODO: "hide" the threading part behind a trait.
 pub fn solve<PS: planner::ProblemSpace>(
     ps: &mut PS,
     start: PS::State,
@@ -144,7 +145,6 @@ mod tests {
     use std::vec;
 
     use crate::dstar_lite;
-    use crate::dstar_lite::publish_path;
     use crate::planner;
     use crate::util;
 
@@ -240,7 +240,7 @@ mod tests {
         data.insert(start, util::StateData { g: 1.0, rhs: 1.0 });
         data.insert(goal, util::StateData { g: 0.0, rhs: 0.0 });
 
-        publish_path(&mut ps, start, goal, &mut data, callback)
+        dstar_lite::publish_path(&mut ps, start, goal, &mut data, callback)
     }
 
     #[test]
@@ -313,7 +313,7 @@ mod tests {
         data.insert(3, util::StateData { g: f64::INFINITY, rhs: f64::INFINITY });
         data.insert(goal, util::StateData { g: 0.0, rhs: 0.0 });
 
-        publish_path(&mut ps, start, goal, &mut data, callback_test)
+        dstar_lite::publish_path(&mut ps, start, goal, &mut data, callback_test)
     }
 
     #[test]
