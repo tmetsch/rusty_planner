@@ -197,7 +197,7 @@ mod tests {
         let client = ctxt.socket(zmq::REQ).unwrap();
         client.connect(&ep).expect("Could not connect to peer");
         client.send(agent::Msg::Kill().to_msg().as_str(), 0).unwrap();
-        client.recv_msg(0);
+        client.recv_msg(0).unwrap();
         client.disconnect(&ep).unwrap();
     }
 
