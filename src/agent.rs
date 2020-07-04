@@ -155,7 +155,6 @@ fn ping(ctxt: zmq::Context, my_ep: String, rcp: sync::Arc<sync::Mutex<Vec<String
     while !done {
         let mut peers: sync::MutexGuard<Vec<String>> = rcp.lock().unwrap();
         let joined = peers.join(",");
-        println!("Peers: {}", joined);
         let msg = Msg::Ping(joined);
         let mut dead_peers: Vec<String> = vec::Vec::new();
         for peer in peers.iter() {
