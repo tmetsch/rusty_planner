@@ -30,9 +30,16 @@ impl Msg {
 }
 
 ///
+/// An agent in a multi-agent system-of-systems enabling comms.
+///
+pub trait Agent {
+    fn get_msgs(&self) -> Vec<String>;
+}
+
+///
 /// An agent is defined by its endpoint and set of neighbours.
 ///
-pub struct Agent {
+pub struct ZeroAgent {
     ep: String,
     peers: sync::Arc<sync::Mutex<vec::Vec<String>>>,
     msgs: sync::Arc<sync::Mutex<vec::Vec<String>>>,
@@ -47,16 +54,16 @@ pub struct Agent {
 /// Using ZeroMQ for comms - using REP/REQ sockets atm; Could be done more elegant with other
 /// socket type - but works for now - KISS :-)
 ///
-impl Agent {
+impl ZeroAgent {
     /// Creates a new agent.
     // TODO: check: Result<Agent, Error>
-    pub fn new(ep: String) -> Agent {
+    pub fn new(ep: String) -> ZeroAgent {
         let ngbhs: sync::Arc<sync::Mutex<Vec<String>>> =
             sync::Arc::new(sync::Mutex::new(vec![ep.clone()]));
         let msgs: sync::Arc<sync::Mutex<Vec<String>>> =
             sync::Arc::new(sync::Mutex::new(vec![]));
         let context: zmq::Context = zmq::Context::new();
-        Agent { ep, peers: ngbhs, ctxt: context, msgs }
+        ZeroAgent { ep, peers: ngbhs, ctxt: context, msgs }
     }
 
     /// add a peer to the multi-agent system.
@@ -103,6 +110,15 @@ impl Agent {
             ping(ctxt_1, ep_1, rcp_1);
         });
         (list_th, ping_th)
+    }
+}
+
+impl Agent for ZeroAgent {
+    fn get_msgs(&self) -> Vec<String> {
+        let msgs: sync::MutexGuard<Vec<String>> = self.msgs.lock().unwrap();
+        let res = msgs.clone();
+        drop(msgs);
+        res
     }
 }
 
@@ -191,6 +207,8 @@ mod tests {
     use std::time;
 
     use crate::agent;
+    // Need to bring this in scope so I can use get_msgs().
+    use crate::agent::Agent;
 
     fn send_kill(ep: &str) {
         let ctxt = zmq::Context::new();
@@ -205,20 +223,20 @@ mod tests {
 
     #[test]
     fn test_new_for_success() {
-        agent::Agent::new("inproc://#0".to_string());
+        agent::ZeroAgent::new("inproc://#0".to_string());
     }
 
     #[test]
     fn test_add_peer_for_success() {
-        let a_0 = agent::Agent::new("inproc://#1".to_string());
+        let a_0 = agent::ZeroAgent::new("inproc://#1".to_string());
         a_0.add_peer("inproc://#1".to_string());
     }
 
     #[test]
     fn test_send_msg_for_success() {
-        let a_0 = agent::Agent::new("tcp://127.0.0.1:8787".to_string());
+        let a_0 = agent::ZeroAgent::new("tcp://127.0.0.1:8787".to_string());
         let th0 = a_0.activate();
-        let a_1 = agent::Agent::new("tcp://127.0.0.1:8989".to_string());
+        let a_1 = agent::ZeroAgent::new("tcp://127.0.0.1:8989".to_string());
         let th1 = a_1.activate();
         a_1.add_peer("tcp://127.0.0.1:8787".to_string());
 
@@ -235,10 +253,21 @@ mod tests {
 
     #[test]
     fn test_activate_for_success() {
-        let a_0 = agent::Agent::new("tcp://127.0.0.1:1234".to_string());
+        let a_0 = agent::ZeroAgent::new("tcp://127.0.0.1:1234".to_string());
         let ths = a_0.activate();
         thread::sleep(time::Duration::from_millis(100));
         send_kill("tcp://127.0.0.1:1234");
+        ths.0.join().unwrap();
+        ths.1.join().unwrap();
+    }
+
+    #[test]
+    fn test_get_msgs_for_success() {
+        let a_0 = agent::ZeroAgent::new("tcp://127.0.0.1:9898".to_string());
+        let ths = a_0.activate();
+        thread::sleep(time::Duration::from_millis(100));
+        a_0.get_msgs();
+        send_kill("tcp://127.0.0.1:9898");
         ths.0.join().unwrap();
         ths.1.join().unwrap();
     }
@@ -251,9 +280,9 @@ mod tests {
 
     #[test]
     fn test_send_msg_for_sanity() {
-        let a_0 = agent::Agent::new("tcp://127.0.0.1:5000".to_string());
+        let a_0 = agent::ZeroAgent::new("tcp://127.0.0.1:5000".to_string());
         a_0.activate();
-        let a_1 = agent::Agent::new("tcp://127.0.0.1:5001".to_string());
+        let a_1 = agent::ZeroAgent::new("tcp://127.0.0.1:5001".to_string());
         a_1.add_peer(String::from("tcp://127.0.0.1:5000"));
         a_1.activate();
 
@@ -271,8 +300,8 @@ mod tests {
 
     #[test]
     fn test_activate_for_sanity() {
-        let a_0 = agent::Agent::new("tcp://127.0.0.1:5002".to_string());
-        let a_1 = agent::Agent::new("tcp://127.0.0.1:5003".to_string());
+        let a_0 = agent::ZeroAgent::new("tcp://127.0.0.1:5002".to_string());
+        let a_1 = agent::ZeroAgent::new("tcp://127.0.0.1:5003".to_string());
         a_1.add_peer("inproc://#2".to_string());
 
         a_0.activate();
@@ -283,5 +312,23 @@ mod tests {
         // When a_1 is gone, a_0 should only know itself...
         assert_eq!(a_0.peers.lock().unwrap().to_vec(), vec!["tcp://127.0.0.1:5002"]);
         send_kill("tcp://127.0.0.1:5002");
+    }
+
+    #[test]
+    fn test_get_msgs_for_sanity() {
+        let a_0 = agent::ZeroAgent::new("tcp://127.0.0.1:5004".to_string());
+        a_0.activate();
+        let a_1 = agent::ZeroAgent::new("tcp://127.0.0.1:5005".to_string());
+        a_1.add_peer(String::from("tcp://127.0.0.1:5004"));
+        a_1.activate();
+
+        thread::sleep(time::Duration::from_millis(200));
+        a_0.send_msg(agent::Msg::Message(String::from("Foo")));
+
+        let msgs = a_1.get_msgs();
+        assert_eq!(msgs, vec!["Foo"]);
+
+        send_kill("tcp://127.0.0.1:5004");
+        send_kill("tcp://127.0.0.1:5005");
     }
 }
