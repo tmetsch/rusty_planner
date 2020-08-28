@@ -44,7 +44,9 @@ impl planner::ProblemSpace for Maze {
         // can move both ways...
         self.succ(s)
     }
+}
 
+impl planner::Lifelong for Maze {
     fn update(&mut self, state: &Self::State) {
         // removes obstacle @ (3, 4)
         if state.0 == 3 && state.1 == 4 {

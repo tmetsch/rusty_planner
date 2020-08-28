@@ -3,6 +3,7 @@ use std::thread;
 use std::time;
 use std::vec;
 
+// TODO: check usage of &str + lifetime vs String.
 // TODO: look into caching connections, etc.
 // TODO: look into agents advertising capabilities - OCCI style of course :-)
 
@@ -24,7 +25,7 @@ impl Msg {
         match &self {
             Msg::Ping(content) => String::from("P@") + content,
             Msg::Message(content) => String::from("M@") + content,
-            Msg::Kill() => String::from("K@0")
+            Msg::Kill() => String::from("K@0"),
         }
     }
 }
@@ -33,11 +34,14 @@ impl Msg {
 /// An agent in a multi-agent system-of-systems enabling comms.
 ///
 pub trait Agent {
-    fn get_msgs(&self) -> Vec<String>;
+    /// Return the current messages for this Agent.
+    fn retrieve(&self) -> Vec<String>;
+    /// Broadcast a message to the participants in the system-of-systems.
+    fn broadcast(&self, msg: &str);
 }
 
 ///
-/// An agent is defined by its endpoint and set of neighbours.
+/// An Agent using ZeroMQ to communicate with it's peers.
 ///
 pub struct ZeroAgent {
     ep: String,
@@ -60,10 +64,14 @@ impl ZeroAgent {
     pub fn new(ep: String) -> ZeroAgent {
         let ngbhs: sync::Arc<sync::Mutex<Vec<String>>> =
             sync::Arc::new(sync::Mutex::new(vec![ep.clone()]));
-        let msgs: sync::Arc<sync::Mutex<Vec<String>>> =
-            sync::Arc::new(sync::Mutex::new(vec![]));
+        let msgs: sync::Arc<sync::Mutex<Vec<String>>> = sync::Arc::new(sync::Mutex::new(vec![]));
         let context: zmq::Context = zmq::Context::new();
-        ZeroAgent { ep, peers: ngbhs, ctxt: context, msgs }
+        ZeroAgent {
+            ep,
+            peers: ngbhs,
+            ctxt: context,
+            msgs,
+        }
     }
 
     /// add a peer to the multi-agent system.
@@ -76,19 +84,12 @@ impl ZeroAgent {
         drop(peers);
     }
 
-    /// Send a message to an agent's peers.
-    pub fn send_msg(&self, msg: Msg) {
-        let rcp: sync::Arc<sync::Mutex<Vec<String>>> = sync::Arc::clone(&self.peers);
-        let peers: sync::MutexGuard<Vec<String>> = rcp.lock().unwrap();
-        for peer in peers.iter() {
-            if peer != &self.ep {
-                let client = &self.ctxt.socket(zmq::REQ).unwrap();
-                client.connect(&peer).expect("Could not connect to peer");
-                client.send(msg.to_msg().as_str(), 0).unwrap();
-                client.recv_msg(0).unwrap();  // Wait for ack...
-            }
-        }
-        drop(peers);
+    /// send a message to a particular peer.
+    pub fn send_msg(&self, peer: &str, msg: &Msg) {
+        let client = &self.ctxt.socket(zmq::REQ).unwrap();
+        client.connect(&peer).expect("Could not connect to peer");
+        client.send(msg.to_msg().as_str(), 0).unwrap();
+        client.recv_msg(0).unwrap(); // Wait for ack...
     }
 
     /// Activate the agents - will start listener and mgmt. threads.
@@ -111,22 +112,23 @@ impl ZeroAgent {
         });
         (list_th, ping_th)
     }
-}
 
-impl Agent for ZeroAgent {
-    fn get_msgs(&self) -> Vec<String> {
-        let msgs: sync::MutexGuard<Vec<String>> = self.msgs.lock().unwrap();
-        let res = msgs.clone();
-        drop(msgs);
-        res
+    pub fn get_n_peers(&self) -> usize {
+        let rcp: sync::Arc<sync::Mutex<Vec<String>>> = sync::Arc::clone(&self.peers);
+        let peers: sync::MutexGuard<Vec<String>> = rcp.lock().unwrap();
+        let n_peers: usize = peers.len();
+        drop(peers);
+        n_peers
     }
 }
 
 /// Listen to incoming messages and act accordingly.
-fn listen(ctxt: zmq::Context,
-          ep: String,
-          rcp: sync::Arc<sync::Mutex<Vec<String>>>,
-          msg_rcp: sync::Arc<sync::Mutex<Vec<String>>>) {
+fn listen(
+    ctxt: zmq::Context,
+    ep: String,
+    rcp: sync::Arc<sync::Mutex<Vec<String>>>,
+    msg_rcp: sync::Arc<sync::Mutex<Vec<String>>>,
+) {
     let mut done: bool = false;
     let list: zmq::Socket = ctxt.socket(zmq::REP).unwrap();
     list.bind(&ep).expect("Could not bind...");
@@ -167,8 +169,7 @@ fn listen(ctxt: zmq::Context,
 /// Could be optimized by only sending delta in data between last msg and new one.
 ///
 fn ping(ctxt: zmq::Context, my_ep: String, rcp: sync::Arc<sync::Mutex<Vec<String>>>) {
-    let mut done: bool = false;
-    while !done {
+    loop {
         let mut peers: sync::MutexGuard<Vec<String>> = rcp.lock().unwrap();
         let joined = peers.join(",");
         let msg = Msg::Ping(joined);
@@ -193,11 +194,31 @@ fn ping(ctxt: zmq::Context, my_ep: String, rcp: sync::Arc<sync::Mutex<Vec<String
         }
 
         if peers.is_empty() {
-            done = true;
+            break;
         }
 
         drop(peers);
         thread::sleep(time::Duration::from_secs(TIMEOUT));
+    }
+}
+
+impl Agent for ZeroAgent {
+    fn retrieve(&self) -> Vec<String> {
+        let mut msgs: sync::MutexGuard<Vec<String>> = self.msgs.lock().unwrap();
+        let res = msgs.clone();
+        msgs.clear();
+        drop(msgs);
+        res
+    }
+    fn broadcast(&self, msg: &str) {
+        let rcp: sync::Arc<sync::Mutex<Vec<String>>> = sync::Arc::clone(&self.peers);
+        let peers: sync::MutexGuard<Vec<String>> = rcp.lock().unwrap();
+        for peer in peers.iter() {
+            if peer != &self.ep {
+                self.send_msg(peer, &Msg::Message(msg.to_string()));
+            }
+        }
+        drop(peers);
     }
 }
 
@@ -207,14 +228,16 @@ mod tests {
     use std::time;
 
     use crate::agent;
-    // Need to bring this in scope so I can use get_msgs().
+    // Need to bring this in scope so I can use retrieve().
     use crate::agent::Agent;
 
     fn send_kill(ep: &str) {
         let ctxt = zmq::Context::new();
         let client = ctxt.socket(zmq::REQ).unwrap();
         client.connect(&ep).expect("Could not connect to peer");
-        client.send(agent::Msg::Kill().to_msg().as_str(), 0).unwrap();
+        client
+            .send(agent::Msg::Kill().to_msg().as_str(), 0)
+            .unwrap();
         client.recv_msg(0).unwrap();
         client.disconnect(&ep).unwrap();
     }
@@ -241,7 +264,10 @@ mod tests {
         a_1.add_peer("tcp://127.0.0.1:8787".to_string());
 
         thread::sleep(time::Duration::from_millis(200));
-        a_1.send_msg(agent::Msg::Message(String::from("hello")));
+        a_1.send_msg(
+            "tcp://127.0.0.1:8787",
+            &agent::Msg::Message(String::from("hello")),
+        );
 
         send_kill("tcp://127.0.0.1:8787");
         send_kill("tcp://127.0.0.1:8989");
@@ -262,14 +288,44 @@ mod tests {
     }
 
     #[test]
-    fn test_get_msgs_for_success() {
+    fn test_get_n_peers_success() {
+        let a_0 = agent::ZeroAgent::new("tcp://127.0.0.1:2345".to_string());
+        let ths = a_0.activate();
+        a_0.get_n_peers();
+        thread::sleep(time::Duration::from_millis(100));
+        send_kill("tcp://127.0.0.1:2345");
+        ths.0.join().unwrap();
+        ths.1.join().unwrap();
+    }
+
+    #[test]
+    fn test_retrieve_for_success() {
         let a_0 = agent::ZeroAgent::new("tcp://127.0.0.1:9898".to_string());
         let ths = a_0.activate();
         thread::sleep(time::Duration::from_millis(100));
-        a_0.get_msgs();
+        a_0.retrieve();
         send_kill("tcp://127.0.0.1:9898");
         ths.0.join().unwrap();
         ths.1.join().unwrap();
+    }
+
+    #[test]
+    fn test_broadcast_for_success() {
+        let a_0 = agent::ZeroAgent::new("tcp://127.0.0.1:3456".to_string());
+        let th0 = a_0.activate();
+        let a_1 = agent::ZeroAgent::new("tcp://127.0.0.1:3457".to_string());
+        let th1 = a_1.activate();
+        a_1.add_peer("tcp://127.0.0.1:3456".to_string());
+
+        thread::sleep(time::Duration::from_millis(200));
+        a_1.broadcast("hello");
+
+        send_kill("tcp://127.0.0.1:3456");
+        send_kill("tcp://127.0.0.1:3457");
+        th0.0.join().unwrap();
+        th0.1.join().unwrap();
+        th1.0.join().unwrap();
+        th1.1.join().unwrap();
     }
 
     // Test for failure.
@@ -287,7 +343,10 @@ mod tests {
         a_1.activate();
 
         thread::sleep(time::Duration::from_millis(200));
-        a_0.send_msg(agent::Msg::Message(String::from("Hello")));
+        a_0.send_msg(
+            "tcp://127.0.0.1:5001",
+            &agent::Msg::Message(String::from("Hello")),
+        );
 
         // a_0 was sender so msg list is empty...
         assert!(a_0.msgs.lock().unwrap().to_vec().is_empty());
@@ -302,7 +361,7 @@ mod tests {
     fn test_activate_for_sanity() {
         let a_0 = agent::ZeroAgent::new("tcp://127.0.0.1:5002".to_string());
         let a_1 = agent::ZeroAgent::new("tcp://127.0.0.1:5003".to_string());
-        a_1.add_peer("inproc://#2".to_string());
+        a_1.add_peer("tcp://127.0.0.1:5003".to_string());
 
         a_0.activate();
         a_1.activate();
@@ -310,25 +369,68 @@ mod tests {
         thread::sleep(time::Duration::from_millis(100));
         send_kill("tcp://127.0.0.1:5003");
         // When a_1 is gone, a_0 should only know itself...
-        assert_eq!(a_0.peers.lock().unwrap().to_vec(), vec!["tcp://127.0.0.1:5002"]);
+        assert_eq!(
+            a_0.peers.lock().unwrap().to_vec(),
+            vec!["tcp://127.0.0.1:5002"]
+        );
         send_kill("tcp://127.0.0.1:5002");
     }
 
     #[test]
-    fn test_get_msgs_for_sanity() {
+    fn test_get_n_peers_for_sanity() {
         let a_0 = agent::ZeroAgent::new("tcp://127.0.0.1:5004".to_string());
-        a_0.activate();
         let a_1 = agent::ZeroAgent::new("tcp://127.0.0.1:5005".to_string());
-        a_1.add_peer(String::from("tcp://127.0.0.1:5004"));
+        a_1.add_peer("tcp://127.0.0.1:5004".to_string());
+
+        a_0.activate();
         a_1.activate();
-
         thread::sleep(time::Duration::from_millis(200));
-        a_0.send_msg(agent::Msg::Message(String::from("Foo")));
-
-        let msgs = a_1.get_msgs();
-        assert_eq!(msgs, vec!["Foo"]);
+        // both should know about each other:
+        assert_eq!(a_0.get_n_peers(), 2);
+        assert_eq!(a_1.get_n_peers(), 2);
 
         send_kill("tcp://127.0.0.1:5004");
         send_kill("tcp://127.0.0.1:5005");
+    }
+
+    #[test]
+    fn test_retrieve_for_sanity() {
+        let a_0 = agent::ZeroAgent::new("tcp://127.0.0.1:5006".to_string());
+        a_0.activate();
+        let a_1 = agent::ZeroAgent::new("tcp://127.0.0.1:5007".to_string());
+        a_1.add_peer(String::from("tcp://127.0.0.1:5006"));
+        a_1.activate();
+
+        thread::sleep(time::Duration::from_millis(2 * agent::TIMEOUT));
+        a_0.send_msg(
+            "tcp://127.0.0.1:5007",
+            &agent::Msg::Message(String::from("Foo")),
+        );
+
+        let msgs = a_1.retrieve();
+        assert_eq!(msgs, vec!["Foo"]);
+
+        send_kill("tcp://127.0.0.1:5006");
+        send_kill("tcp://127.0.0.1:5007");
+    }
+
+    #[test]
+    fn test_broadcast_for_sanity() {
+        let a_0 = agent::ZeroAgent::new("tcp://127.0.0.1:5008".to_string());
+        a_0.activate();
+        let a_1 = agent::ZeroAgent::new("tcp://127.0.0.1:5009".to_string());
+        a_1.add_peer(String::from("tcp://127.0.0.1:5008"));
+        a_1.activate();
+
+        thread::sleep(time::Duration::from_millis(1000));
+        a_0.broadcast("bar");
+
+        let msgs = a_0.retrieve();
+        assert_eq!(msgs.len(), 0); // should not talk to itself.
+        let msgs = a_1.retrieve();
+        assert_eq!(msgs, vec!["bar"]); // other agent should know...
+
+        send_kill("tcp://127.0.0.1:5008");
+        send_kill("tcp://127.0.0.1:5009");
     }
 }

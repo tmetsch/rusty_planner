@@ -6,7 +6,7 @@ use rusty_planner::dstar_lite;
 use rusty_planner::planner;
 
 struct Graph {
-    moves: i32
+    moves: i32,
 }
 
 ///
@@ -16,7 +16,9 @@ impl planner::ProblemSpace for Graph {
     type State = i32;
     type Iter = vec::IntoIter<(Self::State, f64)>;
 
-    fn heuristic(&self, _: &Self::State, _: &Self::State) -> f64 { 0.0 }
+    fn heuristic(&self, _: &Self::State, _: &Self::State) -> f64 {
+        0.0
+    }
 
     fn succ(&self, state: &Self::State) -> Self::Iter {
         match (*state, self.moves) {
@@ -25,7 +27,7 @@ impl planner::ProblemSpace for Graph {
             (2, 0) => vec![(4, 1.0)].into_iter(),
             (2, _) => vec![(4, 10.0)].into_iter(),
             (3, _) => vec![(4, 2.0)].into_iter(),
-            _ => vec![].into_iter()
+            _ => vec![].into_iter(),
         }
     }
 
@@ -36,10 +38,12 @@ impl planner::ProblemSpace for Graph {
             (3, _) => vec![(1, 2.0)].into_iter(),
             (4, 0) => vec![(2, 1.0), (3, 5.0)].into_iter(),
             (4, _) => vec![(2, 10.0), (3, 5.0)].into_iter(),
-            _ => vec![].into_iter()
+            _ => vec![].into_iter(),
         }
     }
+}
 
+impl planner::Lifelong for Graph {
     fn update(&mut self, _: &Self::State) {
         self.moves += 1;
     }

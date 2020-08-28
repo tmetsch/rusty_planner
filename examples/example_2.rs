@@ -60,6 +60,9 @@ fn callback(path: Vec<(i32, i32)>) {
 
 /// Main.
 fn main() {
-    let robots = Robots { start: (0, 0), goal: (10, 10) };
+    let robots = Robots {
+        start: (0, 0),
+        goal: (10, 10),
+    };
     any_dyn_astar::solve(&robots, robots.start, robots.goal, callback);
 }

@@ -25,7 +25,10 @@ fn update_state<PS: planner::ProblemSpace>(
     incons: &mut Vec<PS::State>,
     eps: f64,
 ) {
-    data.entry(s).or_insert(util::StateData { rhs: f64::INFINITY, g: f64::INFINITY });
+    data.entry(s).or_insert(util::StateData {
+        rhs: f64::INFINITY,
+        g: f64::INFINITY,
+    });
     if s != goal {
         let mut tmp = f64::INFINITY;
         for item in ps.succ(&s) {
@@ -37,15 +40,19 @@ fn update_state<PS: planner::ProblemSpace>(
     }
     for x in open.iter() {
         if x.state == s {
-            println!("WARNING: Should remove s from open - needs: \
+            println!(
+                "WARNING: Should remove s from open - needs: \
             https://github.com/rust-lang/rust/issues/66724; \
-            This indicates there are cycles in the state space.");
+            This indicates there are cycles in the state space."
+            );
         }
     }
     if data[&s].g as i64 != data[&s].rhs as i64 {
         if !closed.contains(&s) {
             open.push(util::HeapEntry::new_entry(
-                s, key(&data[&s], ps.heuristic(&s, &start), eps)));
+                s,
+                key(&data[&s], ps.heuristic(&s, &start), eps),
+            ));
         } else {
             incons.push(s);
         }
@@ -61,11 +68,12 @@ fn compute_path<PS: planner::ProblemSpace>(
     open: &mut collections::BinaryHeap<util::HeapEntry<PS::State>>,
     closed: &mut Vec<PS::State>,
     incons: &mut Vec<PS::State>,
-    eps: f64) {
-    while (!open.is_empty()) &&
-        ((open.peek().unwrap().keys < key(&data[&start],
-                                          ps.heuristic(&start, &start), eps)) ||
-            (data[&start].rhs as i64 != data[&start].g as i64)) {
+    eps: f64,
+) {
+    while (!open.is_empty())
+        && ((open.peek().unwrap().keys < key(&data[&start], ps.heuristic(&start, &start), eps))
+            || (data[&start].rhs as i64 != data[&start].g as i64))
+    {
         let s: util::HeapEntry<PS::State> = open.pop().unwrap();
         if data[&s.state].g > data[&s.state].rhs {
             data.get_mut(&s.state).unwrap().g = data[&s.state].rhs;
@@ -95,8 +103,20 @@ pub fn solve<PS: planner::ProblemSpace>(
     // initialize data - copy start & goal state into here...
     let mut node_data: collections::HashMap<PS::State, util::StateData> =
         collections::HashMap::new();
-    node_data.insert(start, util::StateData { rhs: f64::INFINITY, g: f64::INFINITY });
-    node_data.insert(goal, util::StateData { rhs: 0.0, g: f64::INFINITY });
+    node_data.insert(
+        start,
+        util::StateData {
+            rhs: f64::INFINITY,
+            g: f64::INFINITY,
+        },
+    );
+    node_data.insert(
+        goal,
+        util::StateData {
+            rhs: 0.0,
+            g: f64::INFINITY,
+        },
+    );
     let eps = 2.0;
 
     let mut open: collections::BinaryHeap<util::HeapEntry<PS::State>> =
@@ -104,11 +124,22 @@ pub fn solve<PS: planner::ProblemSpace>(
     let mut closed: Vec<PS::State> = Vec::new();
     let mut incons: Vec<PS::State> = Vec::new();
     let node_0: util::HeapEntry<PS::State> = util::HeapEntry::new_entry(
-        goal, key(&node_data[&goal], ps.heuristic(&goal, &start), eps));
+        goal,
+        key(&node_data[&goal], ps.heuristic(&goal, &start), eps),
+    );
     open.push(node_0);
 
     // compute path
-    compute_path(ps, start, goal, &mut node_data, &mut open, &mut closed, &mut incons, eps);
+    compute_path(
+        ps,
+        start,
+        goal,
+        &mut node_data,
+        &mut open,
+        &mut closed,
+        &mut incons,
+        eps,
+    );
 
     // publish sub-optimal result.
     publish_plan(ps, start, goal, node_data, callback);
@@ -117,11 +148,13 @@ pub fn solve<PS: planner::ProblemSpace>(
 }
 
 /// Uses callback to publish the current solution.
-fn publish_plan<PS: planner::ProblemSpace>(ps: &PS,
-                                           start: PS::State,
-                                           goal: PS::State,
-                                           data: collections::HashMap<PS::State, util::StateData>,
-                                           callback: fn(Vec<PS::State>)) {
+fn publish_plan<PS: planner::ProblemSpace>(
+    ps: &PS,
+    start: PS::State,
+    goal: PS::State,
+    data: collections::HashMap<PS::State, util::StateData>,
+    callback: fn(Vec<PS::State>),
+) {
     let mut plan = Vec::new();
     let mut done = false;
     let mut curr = start;
@@ -129,8 +162,7 @@ fn publish_plan<PS: planner::ProblemSpace>(ps: &PS,
         let mut min_cost = f64::INFINITY;
         let mut next_state = curr;
         for successor in ps.succ(&curr) {
-            if data.contains_key(&successor.0) &&
-                data[&successor.0].g + successor.1 <= min_cost {
+            if data.contains_key(&successor.0) && data[&successor.0].g + successor.1 <= min_cost {
                 min_cost = data[&successor.0].g + successor.1;
                 next_state = successor.0;
             }
@@ -163,8 +195,12 @@ mod tests {
         fn heuristic(&self, _: &Self::State, _: &Self::State) -> f64 {
             1.0
         }
-        fn succ(&self, _: &Self::State) -> Self::Iter { vec![(1, 1.0)].into_iter() }
-        fn pred(&self, _: &Self::State) -> Self::Iter { vec![(0, 1.0)].into_iter() }
+        fn succ(&self, _: &Self::State) -> Self::Iter {
+            vec![(1, 1.0)].into_iter()
+        }
+        fn pred(&self, _: &Self::State) -> Self::Iter {
+            vec![(0, 1.0)].into_iter()
+        }
     }
 
     fn callback(_: Vec<i32>) {}
@@ -189,7 +225,16 @@ mod tests {
         let mut closed = Vec::new();
         let mut incons = Vec::new();
         any_dyn_astar::update_state(
-            &ps, s, start, goal, &mut data, &mut open, &mut closed, &mut incons, 1.0);
+            &ps,
+            s,
+            start,
+            goal,
+            &mut data,
+            &mut open,
+            &mut closed,
+            &mut incons,
+            1.0,
+        );
     }
 
     #[test]
@@ -203,7 +248,15 @@ mod tests {
         let mut closed = Vec::new();
         let mut incons = Vec::new();
         any_dyn_astar::compute_path(
-            &ps, start, goal, &mut data, &mut open, &mut closed, &mut incons, 1.0);
+            &ps,
+            start,
+            goal,
+            &mut data,
+            &mut open,
+            &mut closed,
+            &mut incons,
+            1.0,
+        );
     }
 
     #[test]
@@ -228,8 +281,8 @@ mod tests {
         let s_1 = util::StateData { rhs: 2.0, g: 2.0 };
         let eps = 1.0;
         let h = 1.0;
-        assert_eq!(any_dyn_astar::key(&s_0, h, eps), (2., 1.));  // 1 + 1 * 1, 1
-        assert_eq!(any_dyn_astar::key(&s_1, h, eps), (3., 2.));  // 2 + 1, 2
+        assert_eq!(any_dyn_astar::key(&s_0, h, eps), (2., 1.)); // 1 + 1 * 1, 1
+        assert_eq!(any_dyn_astar::key(&s_1, h, eps), (3., 2.)); // 2 + 1, 2
     }
 
     #[test]
@@ -248,32 +301,68 @@ mod tests {
         // unknown state - add to data...
         let s = 2;
         any_dyn_astar::update_state(
-            &ps, s, start, goal, &mut data, &mut open, &mut closed, &mut incons, 1.0);
+            &ps,
+            s,
+            start,
+            goal,
+            &mut data,
+            &mut open,
+            &mut closed,
+            &mut incons,
+            1.0,
+        );
         assert_eq!(data[&2].g, f64::INFINITY);
-        assert_eq!(data[&2].rhs, 2.0);  // cost 1.0 + g(succ(s)) 1.0 == 2.0
+        assert_eq!(data[&2].rhs, 2.0); // cost 1.0 + g(succ(s)) 1.0 == 2.0
 
         // state != goal
         let s = 0;
         any_dyn_astar::update_state(
-            &ps, s, start, goal, &mut data, &mut open, &mut closed, &mut incons, 1.0);
+            &ps,
+            s,
+            start,
+            goal,
+            &mut data,
+            &mut open,
+            &mut closed,
+            &mut incons,
+            1.0,
+        );
         assert_eq!(data[&0].rhs, 2.0);
 
         // g != rhs
         let s = 3;
         data.insert(s, util::StateData { g: 1.0, rhs: 10.0 });
         any_dyn_astar::update_state(
-            &ps, s, start, goal, &mut data, &mut open, &mut closed, &mut incons, 1.0);
+            &ps,
+            s,
+            start,
+            goal,
+            &mut data,
+            &mut open,
+            &mut closed,
+            &mut incons,
+            1.0,
+        );
         let mut contains = false;
         for item in open.iter() {
             if item.state == s {
                 contains = true;
             }
         }
-        assert_eq!(contains, true);  // should have been added to list...
+        assert_eq!(contains, true); // should have been added to list...
 
         closed.push(s);
         any_dyn_astar::update_state(
-            &ps, s, start, goal, &mut data, &mut open, &mut closed, &mut incons, 1.0);
+            &ps,
+            s,
+            start,
+            goal,
+            &mut data,
+            &mut open,
+            &mut closed,
+            &mut incons,
+            1.0,
+        );
         assert_eq!(incons.contains(&s), true);
     }
 
@@ -288,19 +377,38 @@ mod tests {
         let mut closed = Vec::new();
         let mut incons = Vec::new();
 
-        data.insert(start, util::StateData { rhs: f64::INFINITY, g: f64::INFINITY });
-        data.insert(goal, util::StateData { rhs: 0.0, g: f64::INFINITY });
+        data.insert(
+            start,
+            util::StateData {
+                rhs: f64::INFINITY,
+                g: f64::INFINITY,
+            },
+        );
+        data.insert(
+            goal,
+            util::StateData {
+                rhs: 0.0,
+                g: f64::INFINITY,
+            },
+        );
 
-        let node_0 = util::HeapEntry::new_entry(
-            goal, any_dyn_astar::key(&data[&1], 1.0, 1.0));
+        let node_0 = util::HeapEntry::new_entry(goal, any_dyn_astar::key(&data[&1], 1.0, 1.0));
         open.push(node_0);
 
         any_dyn_astar::compute_path(
-            &ps, start, goal, &mut data, &mut open, &mut closed, &mut incons, 1.0);
+            &ps,
+            start,
+            goal,
+            &mut data,
+            &mut open,
+            &mut closed,
+            &mut incons,
+            1.0,
+        );
         assert_eq!(open.len(), 0);
-        assert_eq!(data[&0].g, 1.);  // 1 step to get to goal...
+        assert_eq!(data[&0].g, 1.); // 1 step to get to goal...
         assert_eq!(data[&0].rhs, 1.);
-        assert_eq!(data[&1].g, 0.);  // it's the goal :-)
+        assert_eq!(data[&1].g, 0.); // it's the goal :-)
         assert_eq!(data[&1].rhs, 0.);
     }
 }

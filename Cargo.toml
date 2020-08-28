@@ -22,3 +22,7 @@ path = "examples/example_2.rs"
 [[example]]
 name = "example_3"
 path = "examples/example_3.rs"
+
+[[example]]
+name = "example_4"
+path = "examples/example_4.rs"

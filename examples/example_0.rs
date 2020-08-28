@@ -13,7 +13,7 @@ struct Queen {
 }
 
 struct Chess<'a> {
-    board: &'a mut collections::HashMap<i32, Queen>
+    board: &'a mut collections::HashMap<i32, Queen>,
 }
 
 ///
@@ -57,7 +57,7 @@ impl<'a> iterative_repair::Problem for Chess<'a> {
     }
 }
 
-fn main() -> Result<(), num::ParseIntError>  {
+fn main() -> Result<(), num::ParseIntError> {
     let mut board: collections::HashMap<i32, Queen> = collections::HashMap::new();
     board.insert(0, Queen { x: 0, y: 0 });
     board.insert(1, Queen { x: 1, y: 2 });

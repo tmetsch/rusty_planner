@@ -22,8 +22,12 @@ fn update_state<PS: planner::ProblemSpace>(
     start: PS::State,
     goal: PS::State,
     data: &mut collections::HashMap<PS::State, util::StateData>,
-    open: &mut collections::BinaryHeap<util::HeapEntry<PS::State>>) {
-    data.entry(s).or_insert(util::StateData { rhs: f64::INFINITY, g: f64::INFINITY });
+    open: &mut collections::BinaryHeap<util::HeapEntry<PS::State>>,
+) {
+    data.entry(s).or_insert(util::StateData {
+        rhs: f64::INFINITY,
+        g: f64::INFINITY,
+    });
     if s != goal {
         let mut tmp = f64::INFINITY;
         for item in ps.succ(&s) {
@@ -35,14 +39,18 @@ fn update_state<PS: planner::ProblemSpace>(
     }
     for x in open.iter() {
         if x.state == s {
-            println!("WARNING: Should remove s from open - needs: \
+            println!(
+                "WARNING: Should remove s from open - needs: \
             https://github.com/rust-lang/rust/issues/66724; \
-            This indicates there are cycles in the state space.");
+            This indicates there are cycles in the state space."
+            );
         }
     }
     if data[&s].g as i64 != data[&s].rhs as i64 {
         open.push(util::HeapEntry::new_entry(
-            s, key(&data[&s], ps.heuristic(&s, &start))));
+            s,
+            key(&data[&s], ps.heuristic(&s, &start)),
+        ));
     }
 }
 
@@ -51,11 +59,12 @@ fn compute_path<PS: planner::ProblemSpace>(
     start: PS::State,
     goal: PS::State,
     data: &mut collections::HashMap<PS::State, util::StateData>,
-    open: &mut collections::BinaryHeap<util::HeapEntry<PS::State>>) {
-    while (!open.is_empty()) &&
-        ((open.peek().unwrap().keys < key(&data[&start],
-                                          ps.heuristic(&start, &start))) ||
-            (data[&start].rhs as i64 != data[&start].g as i64)) {
+    open: &mut collections::BinaryHeap<util::HeapEntry<PS::State>>,
+) {
+    while (!open.is_empty())
+        && ((open.peek().unwrap().keys < key(&data[&start], ps.heuristic(&start, &start)))
+            || (data[&start].rhs as i64 != data[&start].g as i64))
+    {
         let s: util::HeapEntry<PS::State> = open.pop().unwrap();
         if data[&s.state].g > data[&s.state].rhs {
             data.get_mut(&s.state).unwrap().g = data[&s.state].rhs;
@@ -77,7 +86,8 @@ fn publish_path<PS: planner::ProblemSpace>(
     start: PS::State,
     goal: PS::State,
     data: &mut collections::HashMap<PS::State, util::StateData>,
-    callback: fn(Vec<PS::State>)) {
+    callback: fn(Vec<PS::State>),
+) {
     // TODO: check if useful to implement action ids to not only output the states but also the
     //   actions (aka. the path/edges -> the road taken).
     let mut res = Vec::new();
@@ -103,24 +113,37 @@ fn publish_path<PS: planner::ProblemSpace>(
 /// *Note*: This will run forever! Signal that you reach the goal state to let it terminate.
 ///
 // TODO: "hide" the threading part behind a trait.
-pub fn solve<PS: planner::ProblemSpace>(
+pub fn solve<PS: planner::ProblemSpace + planner::Lifelong>(
     ps: &mut PS,
     start: PS::State,
     goal: PS::State,
     rx: mpsc::Receiver<(PS::State, PS::State)>,
-    callback: fn(Vec<PS::State>)) {
-
+    callback: fn(Vec<PS::State>),
+) {
     // TODO: add key_modifier parameter.
     let mut start_int: PS::State = start;
     let mut open: collections::BinaryHeap<util::HeapEntry<PS::State>> =
         collections::BinaryHeap::new();
-    let mut data: collections::HashMap<PS::State, util::StateData> =
-        collections::HashMap::new();
+    let mut data: collections::HashMap<PS::State, util::StateData> = collections::HashMap::new();
 
-    data.insert(start_int, util::StateData { g: f64::INFINITY, rhs: f64::INFINITY });
-    data.insert(goal, util::StateData { g: f64::INFINITY, rhs: 0.0 });
+    data.insert(
+        start_int,
+        util::StateData {
+            g: f64::INFINITY,
+            rhs: f64::INFINITY,
+        },
+    );
+    data.insert(
+        goal,
+        util::StateData {
+            g: f64::INFINITY,
+            rhs: 0.0,
+        },
+    );
     open.push(util::HeapEntry::new_entry(
-        goal, key(&data[&goal], ps.heuristic(&goal, &start_int))));
+        goal,
+        key(&data[&goal], ps.heuristic(&goal, &start_int)),
+    ));
 
     compute_path(ps, start_int, goal, &mut data, &mut open);
     publish_path(ps, start_int, goal, &mut data, callback);
@@ -149,7 +172,7 @@ mod tests {
     use crate::util;
 
     struct SimpleGraph {
-        ts: i32
+        ts: i32,
     }
 
     impl planner::ProblemSpace for SimpleGraph {
@@ -165,7 +188,7 @@ mod tests {
                 (1, _) => vec![(2, 1.0), (3, 1.0)].into_iter(),
                 (2, 0) => vec![(4, 1.0)].into_iter(),
                 (2, _) => vec![(4, 7.0)].into_iter(),
-                _ => vec![(4, 5.0)].into_iter()
+                _ => vec![(4, 5.0)].into_iter(),
             }
         }
 
@@ -174,9 +197,12 @@ mod tests {
                 (1, _) => vec![(0, 1.0)].into_iter(),
                 (2, _) => vec![(1, 1.0)].into_iter(),
                 (3, _) => vec![(1, 1.0)].into_iter(),
-                _ => vec![(2, 1.0), (3, 5.0)].into_iter()
+                _ => vec![(2, 1.0), (3, 5.0)].into_iter(),
             }
         }
+    }
+
+    impl planner::Lifelong for SimpleGraph {
         fn update(&mut self, _: &Self::State) {
             self.ts += 1;
         }
@@ -203,12 +229,26 @@ mod tests {
         let goal = 4;
 
         let mut data = collections::HashMap::new();
-        data.insert(start, util::StateData { g: f64::INFINITY, rhs: f64::INFINITY });
-        data.insert(goal, util::StateData { g: f64::INFINITY, rhs: 0.0 });
+        data.insert(
+            start,
+            util::StateData {
+                g: f64::INFINITY,
+                rhs: f64::INFINITY,
+            },
+        );
+        data.insert(
+            goal,
+            util::StateData {
+                g: f64::INFINITY,
+                rhs: 0.0,
+            },
+        );
 
         let mut open = collections::BinaryHeap::new();
         open.push(util::HeapEntry::new_entry(
-            goal, dstar_lite::key(&data[&goal], 0.0)));
+            goal,
+            dstar_lite::key(&data[&goal], 0.0),
+        ));
 
         let s = 1;
         dstar_lite::update_state(&mut ps, s, start, goal, &mut data, &mut open);
@@ -221,12 +261,26 @@ mod tests {
         let goal = 4;
 
         let mut data = collections::HashMap::new();
-        data.insert(start, util::StateData { g: f64::INFINITY, rhs: f64::INFINITY });
-        data.insert(goal, util::StateData { g: f64::INFINITY, rhs: 0.0 });
+        data.insert(
+            start,
+            util::StateData {
+                g: f64::INFINITY,
+                rhs: f64::INFINITY,
+            },
+        );
+        data.insert(
+            goal,
+            util::StateData {
+                g: f64::INFINITY,
+                rhs: 0.0,
+            },
+        );
 
         let mut open = collections::BinaryHeap::new();
         open.push(util::HeapEntry::new_entry(
-            goal, dstar_lite::key(&data[&goal], 0.0)));
+            goal,
+            dstar_lite::key(&data[&goal], 0.0),
+        ));
 
         dstar_lite::compute_path(&mut ps, start, goal, &mut data, &mut open);
     }
@@ -289,7 +343,7 @@ mod tests {
         // s != goal
         let s = 2;
         dstar_lite::update_state(&mut ps, s, start, goal, &mut data, &mut open);
-        assert_eq!(data[&s].rhs, 2.0);  // g(goal) == 1.0 + cost of 1.0
+        assert_eq!(data[&s].rhs, 2.0); // g(goal) == 1.0 + cost of 1.0
 
         // s should have been added to open queue...
         let mut contains = false;
@@ -310,7 +364,13 @@ mod tests {
         data.insert(start, util::StateData { g: 4.0, rhs: 4.0 });
         data.insert(1, util::StateData { g: 3.0, rhs: 3.0 });
         data.insert(2, util::StateData { g: 2.0, rhs: 2.0 });
-        data.insert(3, util::StateData { g: f64::INFINITY, rhs: f64::INFINITY });
+        data.insert(
+            3,
+            util::StateData {
+                g: f64::INFINITY,
+                rhs: f64::INFINITY,
+            },
+        );
         data.insert(goal, util::StateData { g: 0.0, rhs: 0.0 });
 
         dstar_lite::publish_path(&mut ps, start, goal, &mut data, callback_test)
@@ -323,19 +383,33 @@ mod tests {
         let goal = 4;
 
         let mut data = collections::HashMap::new();
-        data.insert(start, util::StateData { g: f64::INFINITY, rhs: f64::INFINITY });
-        data.insert(goal, util::StateData { g: f64::INFINITY, rhs: 0.0 });
+        data.insert(
+            start,
+            util::StateData {
+                g: f64::INFINITY,
+                rhs: f64::INFINITY,
+            },
+        );
+        data.insert(
+            goal,
+            util::StateData {
+                g: f64::INFINITY,
+                rhs: 0.0,
+            },
+        );
 
         let mut open = collections::BinaryHeap::new();
         open.push(util::HeapEntry::new_entry(
-            goal, dstar_lite::key(&data[&goal], 0.0)));
+            goal,
+            dstar_lite::key(&data[&goal], 0.0),
+        ));
 
         dstar_lite::compute_path(&mut ps, start, goal, &mut data, &mut open);
 
-        assert_eq!(data[&0].g, 3.0);  // 3 steps to goal possible ...
-        assert_eq!(data[&1].g, 2.0);  // 2 steps ...
+        assert_eq!(data[&0].g, 3.0); // 3 steps to goal possible ...
+        assert_eq!(data[&1].g, 2.0); // 2 steps ...
         assert_eq!(data[&2].g, 1.0);
-        assert_eq!(data[&3].g, f64::INFINITY);  // should not have expanded in A* search ...
+        assert_eq!(data[&3].g, f64::INFINITY); // should not have expanded in A* search ...
         assert_eq!(data[&4].g, 0.0);
     }
 
