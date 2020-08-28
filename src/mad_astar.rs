@@ -59,10 +59,11 @@ fn expand<A: agent::Agent, PS: planner::ProblemSpace + planner::SharedStates>(
     }
 
     // if we've found a public state --> tell others.
-    if ps.is_public(&s) {
-        if !closed.contains_key(&s) || closed.get(&s).unwrap() > &(data[&s].g_val + ps.heuristic(&s, &goal)) {
-            agent.broadcast(&ps.serialize(0, &s, vec![data[&s].g_val, data[&s].h_val]))
-        }
+    if ps.is_public(&s)
+        && (!closed.contains_key(&s)
+            || closed.get(&s).unwrap() > &(data[&s].g_val + ps.heuristic(&s, &goal)))
+    {
+        agent.broadcast(&ps.serialize(0, &s, vec![data[&s].g_val, data[&s].h_val]))
     }
 
     // Add to closed list.

@@ -515,7 +515,7 @@ fn test_multi_agent_example() {
         v4: 2,
     };
 
-    let mut ready:bool = false;
+    let mut ready: bool = false;
     while !ready {
         if agent_1.get_n_peers() == 2 && agent_2.get_n_peers() == 2 {
             ready = true;
