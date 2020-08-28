@@ -263,7 +263,7 @@ mod tests {
         let th1 = a_1.activate();
         a_1.add_peer("tcp://127.0.0.1:8787".to_string());
 
-        thread::sleep(time::Duration::from_millis(200));
+        thread::sleep(time::Duration::from_millis(2 * agent::WAIT));
         a_1.send_msg(
             "tcp://127.0.0.1:8787",
             &agent::Msg::Message(String::from("hello")),
@@ -281,7 +281,7 @@ mod tests {
     fn test_activate_for_success() {
         let a_0 = agent::ZeroAgent::new("tcp://127.0.0.1:1234".to_string());
         let ths = a_0.activate();
-        thread::sleep(time::Duration::from_millis(100));
+        thread::sleep(time::Duration::from_millis(2 * agent::WAIT));
         send_kill("tcp://127.0.0.1:1234");
         ths.0.join().unwrap();
         ths.1.join().unwrap();
@@ -292,7 +292,7 @@ mod tests {
         let a_0 = agent::ZeroAgent::new("tcp://127.0.0.1:2345".to_string());
         let ths = a_0.activate();
         a_0.get_n_peers();
-        thread::sleep(time::Duration::from_millis(100));
+        thread::sleep(time::Duration::from_millis(2 * agent::WAIT));
         send_kill("tcp://127.0.0.1:2345");
         ths.0.join().unwrap();
         ths.1.join().unwrap();
@@ -302,7 +302,7 @@ mod tests {
     fn test_retrieve_for_success() {
         let a_0 = agent::ZeroAgent::new("tcp://127.0.0.1:9898".to_string());
         let ths = a_0.activate();
-        thread::sleep(time::Duration::from_millis(100));
+        thread::sleep(time::Duration::from_millis(2 * agent::WAIT));
         a_0.retrieve();
         send_kill("tcp://127.0.0.1:9898");
         ths.0.join().unwrap();
@@ -317,7 +317,7 @@ mod tests {
         let th1 = a_1.activate();
         a_1.add_peer("tcp://127.0.0.1:3456".to_string());
 
-        thread::sleep(time::Duration::from_millis(200));
+        thread::sleep(time::Duration::from_millis(2 * agent::WAIT));
         a_1.broadcast("hello");
 
         send_kill("tcp://127.0.0.1:3456");
@@ -342,7 +342,7 @@ mod tests {
         a_1.add_peer(String::from("tcp://127.0.0.1:5000"));
         a_1.activate();
 
-        thread::sleep(time::Duration::from_millis(200));
+        thread::sleep(time::Duration::from_millis(2 * agent::WAIT));
         a_0.send_msg(
             "tcp://127.0.0.1:5001",
             &agent::Msg::Message(String::from("Hello")),
@@ -360,14 +360,14 @@ mod tests {
     #[test]
     fn test_activate_for_sanity() {
         let a_0 = agent::ZeroAgent::new("tcp://127.0.0.1:5002".to_string());
+        a_0.activate();
         let a_1 = agent::ZeroAgent::new("tcp://127.0.0.1:5003".to_string());
         a_1.add_peer("tcp://127.0.0.1:5003".to_string());
-
-        a_0.activate();
         a_1.activate();
 
-        thread::sleep(time::Duration::from_millis(100));
+        thread::sleep(time::Duration::from_millis(2 * agent::WAIT));
         send_kill("tcp://127.0.0.1:5003");
+        thread::sleep(time::Duration::from_millis(2 * agent::WAIT));
         // When a_1 is gone, a_0 should only know itself...
         assert_eq!(
             a_0.peers.lock().unwrap().to_vec(),
@@ -379,12 +379,13 @@ mod tests {
     #[test]
     fn test_get_n_peers_for_sanity() {
         let a_0 = agent::ZeroAgent::new("tcp://127.0.0.1:5004".to_string());
+        a_0.activate();
         let a_1 = agent::ZeroAgent::new("tcp://127.0.0.1:5005".to_string());
         a_1.add_peer("tcp://127.0.0.1:5004".to_string());
-
-        a_0.activate();
         a_1.activate();
-        thread::sleep(time::Duration::from_millis(200));
+
+        // slightly longer then the timeout of peers pinging each other...
+        thread::sleep(time::Duration::from_secs(1.2 as u64 * agent::TIMEOUT));
         // both should know about each other:
         assert_eq!(a_0.get_n_peers(), 2);
         assert_eq!(a_1.get_n_peers(), 2);
@@ -401,7 +402,7 @@ mod tests {
         a_1.add_peer(String::from("tcp://127.0.0.1:5006"));
         a_1.activate();
 
-        thread::sleep(time::Duration::from_millis(2 * agent::TIMEOUT));
+        thread::sleep(time::Duration::from_secs(1.2 as u64 * agent::TIMEOUT));
         a_0.send_msg(
             "tcp://127.0.0.1:5007",
             &agent::Msg::Message(String::from("Foo")),
@@ -422,7 +423,7 @@ mod tests {
         a_1.add_peer(String::from("tcp://127.0.0.1:5008"));
         a_1.activate();
 
-        thread::sleep(time::Duration::from_millis(1000));
+        thread::sleep(time::Duration::from_secs(1.2 as u64 * agent::TIMEOUT));
         a_0.broadcast("bar");
 
         let msgs = a_0.retrieve();

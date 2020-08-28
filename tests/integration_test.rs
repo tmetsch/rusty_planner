@@ -183,7 +183,6 @@ fn test_multi_agent_example() {
         fn pred(&self, state: &Self::State) -> Self::Iter {
             // This is cheating - but good enough for a test...
             match (*state, self.agent_id) {
-                // Picker 0 can move diagonal...
                 (
                     StateVector {
                         v1: 2,
@@ -515,6 +514,14 @@ fn test_multi_agent_example() {
         v3: 2,
         v4: 2,
     };
+
+    let mut ready:bool = false;
+    while !ready {
+        if agent_1.get_n_peers() == 2 && agent_2.get_n_peers() == 2 {
+            ready = true;
+        }
+        thread::sleep(time::Duration::from_millis(500));
+    }
 
     thread::spawn(move || {
         rusty_planner::mad_astar::solve(&agent_1, &ps_1, start, goal);

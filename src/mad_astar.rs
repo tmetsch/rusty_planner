@@ -51,20 +51,22 @@ fn expand<A: agent::Agent, PS: planner::ProblemSpace + planner::SharedStates>(
     open: &mut collections::BinaryHeap<util::HeapEntry<PS::State>>,
     closed: &mut collections::HashMap<PS::State, f64>,
 ) -> bool {
-    // Add to closed list.
-    closed.insert(s, data[&s].g_val + ps.heuristic(&s, &goal));
-
     // if we've found the goal --> tell others.
     if s == goal {
         agent.broadcast(&ps.serialize(0, &s, vec![data[&s].g_val, data[&s].h_val]));
+        closed.insert(s, data[&s].g_val + ps.heuristic(&s, &goal));
         return true;
     }
 
     // if we've found a public state --> tell others.
     if ps.is_public(&s) {
-        // TODO: add check that agents only send public states that they came up with.
-        agent.broadcast(&ps.serialize(0, &s, vec![data[&s].g_val, data[&s].h_val]))
+        if !closed.contains_key(&s) || closed.get(&s).unwrap() > &(data[&s].g_val + ps.heuristic(&s, &goal)) {
+            agent.broadcast(&ps.serialize(0, &s, vec![data[&s].g_val, data[&s].h_val]))
+        }
     }
+
+    // Add to closed list.
+    closed.insert(s, data[&s].g_val + ps.heuristic(&s, &goal));
 
     // check successors.
     for item in ps.succ(&s) {
