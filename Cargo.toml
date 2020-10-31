@@ -26,3 +26,7 @@ path = "examples/example_3.rs"
 [[example]]
 name = "example_4"
 path = "examples/example_4.rs"
+
+[[example]]
+name = "example_5"
+path = "examples/example_5.rs"

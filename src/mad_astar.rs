@@ -292,7 +292,7 @@ mod tests {
     // Test for success.
 
     #[test]
-    fn test_process_message_success() {
+    fn test_process_message_for_success() {
         let ps = SimpleExample {};
         let vals = mad_astar::StateValues {
             g_val: 1.0,
@@ -308,7 +308,7 @@ mod tests {
     }
 
     #[test]
-    fn test_expand_success() {
+    fn test_expand_for_success() {
         let ps = SimpleExample {};
         let agent = SimpleAgent {
             msgs: vec![String::from("foo")],
@@ -332,7 +332,7 @@ mod tests {
     }
 
     #[test]
-    fn test_traceback_success() {
+    fn test_traceback_for_success() {
         let ps = SimpleExample {};
         let agent = SimpleAgent { msgs: vec![] };
         let mut closed: collections::HashMap<i32, f64> = collections::HashMap::new();
@@ -345,7 +345,7 @@ mod tests {
     }
 
     #[test]
-    fn test_solve_success() {
+    fn test_solve_for_success() {
         let ps = SimpleExample {};
         let agent = SimpleAgent { msgs: vec![] };
         mad_astar::solve(&agent, &ps, 0, 3);
@@ -356,7 +356,7 @@ mod tests {
     // Test for sanity.
 
     #[test]
-    fn test_process_message_sanity() {
+    fn test_process_message_for_sanity() {
         let ps = SimpleExample {};
         let vals = mad_astar::StateValues {
             g_val: 1.0,
@@ -404,7 +404,7 @@ mod tests {
     }
 
     #[test]
-    fn test_expand_sanity() {
+    fn test_expand_for_sanity() {
         let ps = SimpleExample {};
         let agent = SimpleAgent {
             msgs: vec![String::from("foo")],
@@ -447,7 +447,7 @@ mod tests {
     }
 
     #[test]
-    fn test_traceback_sanity() {
+    fn test_traceback_for_sanity() {
         let ps = SimpleExample {};
         let agent = SimpleAgent { msgs: vec![] };
         let mut closed: collections::HashMap<i32, f64> = collections::HashMap::new();
@@ -473,7 +473,7 @@ mod tests {
     }
 
     #[test]
-    fn test_solve_sanity() {
+    fn test_solve_for_sanity() {
         let ps = SimpleExample {};
         let agent = SimpleAgent { msgs: vec![] };
 

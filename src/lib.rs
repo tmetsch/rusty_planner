@@ -14,6 +14,8 @@ pub mod any_dyn_astar;
 pub mod dstar_lite;
 /// Module implementing an iterative repair algorithm.
 pub mod iterative_repair;
+/// Module implementing a UCT style Monte-Carlo Tree Search algorithm.
+pub mod mcts;
 
 /// Module implementing the Multi-Agent Distributed forward A* search algorithm.
 pub mod mad_astar;

@@ -288,7 +288,7 @@ mod tests {
     }
 
     #[test]
-    fn test_get_n_peers_success() {
+    fn test_get_n_peers_for_success() {
         let a_0 = agent::ZeroAgent::new("tcp://127.0.0.1:2345".to_string());
         let ths = a_0.activate();
         a_0.get_n_peers();

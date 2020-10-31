@@ -12,7 +12,7 @@ run:
      * S. Koenig and M. Likhachev, **D\*lite**. Eighteenth national conference on Artificial intelligence, 2002,
        https://dl.acm.org/doi/10.5555/777092.777167
      * S. Gelly, Y. Wang, R. Munos, and O. Teytaud **Modification of UCT with Patterns in Monte-Carlo Go**. 
-       Technical report, INRIA, 2006, https://doi.org/10.1007%2F11871842_29.
+       Technical report, INRIA, 2006, http://hal.inria.fr/docs/00/12/15/16/PDF/RR-6062.pdf.
      * M. Zweben, E. Davis, B. Daun and M. J. Deale, **Scheduling and rescheduling with iterative repair**. IEEE 
        Transactions on Systems, Man, and Cybernetics, 1993, https://ieeexplore.ieee.org/document/257756
   * Multi-Agent Planning - Coordination, Negotiation/Bidding, Coalition Formation:

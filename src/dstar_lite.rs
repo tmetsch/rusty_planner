@@ -217,7 +217,7 @@ mod tests {
     // Test for success.
 
     #[test]
-    fn test_key_success() {
+    fn test_key_for_success() {
         let s_d = util::StateData { g: 1.0, rhs: 1.0 };
         dstar_lite::key(&s_d, 1.0);
     }
@@ -315,7 +315,7 @@ mod tests {
     // Test for sanity.
 
     #[test]
-    fn test_key_sanity() {
+    fn test_key_for_sanity() {
         let sd_0 = util::StateData { g: 1.0, rhs: 1.0 };
         let sd_1 = util::StateData { g: 10.0, rhs: 1.0 };
         let sd_2 = util::StateData { g: 1.0, rhs: 10.0 };
