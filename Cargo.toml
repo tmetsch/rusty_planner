@@ -3,9 +3,14 @@ name = "rusty_planner"
 version = "0.1.0"
 authors = ["tmetsch"]
 edition = "2018"
+description = "Artificial intelligence planning & reasoning library for Rust."
+license-file = "LICENSE"
+repository = "https://github.com/tmetsch/rusty_planner/"
+categories = ["algorithms", "science"]
+keywords = ["ai", "artificial-intelligence", "planning", "reasoning"]
 
 [dependencies]
-zmq = "0.9"
+zmq = "^0.9"
 
 [[example]]
 name = "example_0"
