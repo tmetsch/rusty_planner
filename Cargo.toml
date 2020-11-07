@@ -7,7 +7,7 @@ description = "Artificial intelligence planning & reasoning library for Rust."
 license-file = "LICENSE"
 repository = "https://github.com/tmetsch/rusty_planner/"
 categories = ["algorithms", "science"]
-keywords = ["ai", "artificialintelligence", "planning", "reasoning"]
+keywords = ["ai", "planning", "reasoning"]
 
 [dependencies]
 zmq = "^0.9"
