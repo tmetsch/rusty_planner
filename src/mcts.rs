@@ -24,7 +24,7 @@ fn expand<PS: planner::ProblemSpace>(
 }
 
 /// Determine the best possible next step.
-fn best_child<'a, PS: planner::ProblemSpace>(
+fn best_child<'a, PS: planner::ProblemSpace + planner::Anytime>(
     _: &'a PS,
     v: PS::State,
     children: &mut collections::HashMap<PS::State, Vec<PS::State>>,
@@ -55,7 +55,7 @@ fn best_child<'a, PS: planner::ProblemSpace>(
 }
 
 /// Select of expand a state.
-fn tree_policy<'a, PS: planner::ProblemSpace>(
+fn tree_policy<'a, PS: planner::ProblemSpace + planner::Anytime>(
     ps: &'a PS,
     state: PS::State,
     children: &mut collections::HashMap<PS::State, Vec<PS::State>>,
@@ -76,7 +76,11 @@ fn tree_policy<'a, PS: planner::ProblemSpace>(
 
 /// Simulate what would happen if you play from this state to the end.
 // TODO: check if to make this part of the trait - would allow for multi-player games etc.
-fn default_policy<PS: planner::ProblemSpace>(ps: &PS, v: PS::State) -> f64 {
+fn default_policy<PS: planner::ProblemSpace + planner::Anytime>(
+    ps: &PS,
+    v: PS::State,
+    parents: &mut collections::HashMap<PS::State, PS::State>,
+) -> f64 {
     let mut s = v;
     let mut reward = 0.0;
     // This policy currently takes a greedy approach - random might be better in certain cases e.g.
@@ -91,6 +95,7 @@ fn default_policy<PS: planner::ProblemSpace>(ps: &PS, v: PS::State) -> f64 {
                 tmp = next_child.0;
             }
         }
+        parents.insert(tmp, s);
         s = tmp;
         reward += min_val;
     }
@@ -101,19 +106,20 @@ fn default_policy<PS: planner::ProblemSpace>(ps: &PS, v: PS::State) -> f64 {
 }
 
 /// Backpropagate the reward up the tree.
-fn backup<PS: planner::ProblemSpace>(
-    ps: &PS,
+fn backup<PS: planner::ProblemSpace + planner::Anytime>(
+    _: &PS,
     v: PS::State,
     delta: f64,
     n_vals: &mut collections::HashMap<PS::State, u64>,
     q_vals: &mut collections::HashMap<PS::State, f64>,
+    parents: &collections::HashMap<PS::State, PS::State>,
 ) {
     let mut node = v;
     loop {
         *n_vals.entry(node).or_default() += 1;
         *q_vals.entry(node).or_default() += delta;
-        if ps.pred(&node).count() != 0 {
-            node = ps.pred(&node).next().unwrap().0;
+        if parents.contains_key(&node) {
+            node = *parents.get(&node).unwrap();
         } else {
             break;
         }
@@ -124,12 +130,11 @@ fn backup<PS: planner::ProblemSpace>(
 /// Given an problem space will try to figure our what the best next step/action is.
 ///
 // TODO: Parallelize this.
-pub fn solve<PS: planner::ProblemSpace>(
-    ps: &PS,
+pub fn solve<PS: planner::ProblemSpace + planner::Anytime>(
+    ps: &mut PS,
     start: PS::State,
     goal: PS::State,
     iterations: u16,
-    callback: fn(&PS::State),
 ) -> PS::State {
     let mut n_vals: collections::HashMap<PS::State, u64> = collections::HashMap::new();
     let mut q_vals: collections::HashMap<PS::State, f64> = collections::HashMap::new();
@@ -140,13 +145,16 @@ pub fn solve<PS: planner::ProblemSpace>(
     while curr != goal {
         let mut i: u16 = 0;
         while i < iterations {
+            let mut parents: collections::HashMap<PS::State, PS::State> =
+                collections::HashMap::new();
             let v_i = tree_policy(ps, curr, &mut children, &n_vals, &q_vals);
-            let delta = default_policy(ps, v_i);
-            backup(ps, v_i, delta, &mut n_vals, &mut q_vals);
+            parents.insert(v_i, curr);
+            let delta = default_policy(ps, v_i, &mut parents);
+            backup(ps, v_i, delta, &mut n_vals, &mut q_vals, &parents);
             i += 1;
         }
         curr = best_child(ps, curr, &mut children, &n_vals, &q_vals, 0.0).unwrap();
-        callback(&curr);
+        ps.callback(&curr);
     }
     curr
 }
@@ -181,19 +189,14 @@ mod tests {
             }
         }
 
-        fn pred(&self, s_0: &Self::State) -> Self::Iter {
-            match *s_0 {
-                6 => vec![(5, 1.0)].into_iter(),
-                5 => vec![(3, 1.0), (4, 0.8)].into_iter(),
-                4 => vec![(3, 0.5), (2, 1.0)].into_iter(),
-                3 => vec![(1, 1.0)].into_iter(),
-                2 => vec![(1, 0.8)].into_iter(),
-                _ => vec![].into_iter(),
-            }
+        fn pred(&self, _: &Self::State) -> Self::Iter {
+            unimplemented!()
         }
     }
 
-    fn callback(_: &i32) {}
+    impl planner::Anytime for StateGraph {
+        fn callback(&mut self, _: &Self::State) {}
+    }
 
     // Test for success.
 
@@ -237,7 +240,12 @@ mod tests {
     #[test]
     fn test_default_policy_for_success() {
         let ps = StateGraph {};
-        mcts::default_policy(&ps, 1);
+        let mut parents: collections::HashMap<
+            <StateGraph as ProblemSpace>::State,
+            <StateGraph as ProblemSpace>::State,
+        > = collections::HashMap::new();
+
+        mcts::default_policy(&ps, 1, &mut parents);
     }
 
     #[test]
@@ -246,14 +254,18 @@ mod tests {
 
         let mut visits: collections::HashMap<i32, u64> = collections::HashMap::new();
         let mut q_vals: collections::HashMap<i32, f64> = collections::HashMap::new();
+        let mut parents: collections::HashMap<
+            <StateGraph as ProblemSpace>::State,
+            <StateGraph as ProblemSpace>::State,
+        > = collections::HashMap::new();
 
-        mcts::backup(&ps, 1, 1.0, &mut visits, &mut q_vals);
+        mcts::backup(&ps, 1, 1.0, &mut visits, &mut q_vals, &mut parents);
     }
 
     #[test]
     fn test_solve_for_success() {
-        let ps = StateGraph {};
-        mcts::solve(&ps, 1, 6, 3, callback);
+        let mut ps = StateGraph {};
+        mcts::solve(&mut ps, 1, 6, 3);
     }
 
     // Test for failure.
@@ -264,6 +276,14 @@ mod tests {
         let ps = StateGraph {};
         // just to get line coverage to 100% :-)
         ps.heuristic(&0, &1);
+    }
+
+    #[test]
+    #[should_panic(expected = "not implemented")]
+    fn test_pred_for_failure() {
+        let ps = StateGraph {};
+        // just to get line coverage to 100% :-)
+        ps.pred(&0);
     }
 
     // Test for sanity.
@@ -344,7 +364,12 @@ mod tests {
     #[test]
     fn test_default_policy_for_sanity() {
         let ps = StateGraph {};
-        let res = mcts::default_policy(&ps, 1);
+        let mut parents: collections::HashMap<
+            <StateGraph as ProblemSpace>::State,
+            <StateGraph as ProblemSpace>::State,
+        > = collections::HashMap::new();
+
+        let res = mcts::default_policy(&ps, 1, &mut parents);
         // cost of path (1->2->4->5->6) = 3.6 --> 1 + 1/3.6 = 1.28 --> round() --> 1.0
         assert_eq!(res.round(), 1.0);
     }
@@ -355,8 +380,15 @@ mod tests {
 
         let mut visits: collections::HashMap<i32, u64> = collections::HashMap::new();
         let mut q_vals: collections::HashMap<i32, f64> = collections::HashMap::new();
+        let mut parents: collections::HashMap<
+            <StateGraph as ProblemSpace>::State,
+            <StateGraph as ProblemSpace>::State,
+        > = collections::HashMap::new();
 
-        mcts::backup(&ps, 4, 1.2, &mut visits, &mut q_vals);
+        parents.insert(4, 3);
+        parents.insert(3, 2);
+        parents.insert(2, 1);
+        mcts::backup(&ps, 4, 1.2, &mut visits, &mut q_vals, &mut parents);
 
         assert_eq!(visits[&3], 1);
         assert_eq!(visits[&1], 1);
@@ -366,10 +398,10 @@ mod tests {
 
     #[test]
     fn test_solve_for_sanity() {
-        let ps = StateGraph {};
-        let res = mcts::solve(&ps, 1, 6, 3, callback);
+        let mut ps = StateGraph {};
+        let res = mcts::solve(&mut ps, 1, 6, 3);
         assert_eq!(res, 6);
-        let res = mcts::solve(&ps, 6, 6, 3, callback);
+        let res = mcts::solve(&mut ps, 6, 6, 3);
         assert_eq!(res, 6);
     }
 }

@@ -26,7 +26,14 @@ pub trait ProblemSpace {
 pub trait Lifelong: ProblemSpace {
     /// Called when obstacle was detected, or start state transitioned.
     fn update(&mut self, _: &Self::State) {}
-    // TODO: check if we want to add callback here.
+}
+
+///
+/// Trait to enable anytime algorithms to signal back results.
+///
+pub trait Anytime: ProblemSpace {
+    /// Callback to signal - for example - a partial result.
+    fn callback(&mut self, _: &Self::State);
 }
 
 ///

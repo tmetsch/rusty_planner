@@ -56,16 +56,18 @@ impl planner::ProblemSpace for Arena {
     }
 }
 
-/// Simple callback routine.
-fn callback(s_0: &(i32, i32)) {
-    println!("Current best next step: {:?}", s_0);
+impl planner::Anytime for Arena {
+    /// Simple callback routine.
+    fn callback(&mut self, s_0: &(i32, i32)) {
+        println!("Current best next step: {:?}", s_0);
+    }
 }
 
 fn main() {
-    let ps = Arena {
+    let mut ps = Arena {
         obstacles: vec![(2, 2), (3, 3), (4, 3), (4, 4)],
     };
     let start = (1, 1);
     let goal = (WIDTH, HEIGHT);
-    mcts::solve(&ps, start, goal, 3, callback);
+    mcts::solve(&mut ps, start, goal, 3);
 }
