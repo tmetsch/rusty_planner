@@ -385,7 +385,7 @@ mod tests {
         a_1.activate();
 
         // slightly longer then the timeout of peers pinging each other...
-        thread::sleep(time::Duration::from_secs(1.2 as u64 * agent::TIMEOUT));
+        thread::sleep(time::Duration::from_secs(2 * agent::TIMEOUT));
         // both should know about each other:
         assert_eq!(a_0.get_n_peers(), 2);
         assert_eq!(a_1.get_n_peers(), 2);
