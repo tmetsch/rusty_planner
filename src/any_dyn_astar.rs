@@ -1,5 +1,4 @@
 use std::collections;
-use std::f64;
 
 use crate::planner;
 use crate::util;
@@ -38,15 +37,7 @@ fn update_state<PS: planner::ProblemSpace>(
         }
         data.get_mut(&s).unwrap().rhs = tmp;
     }
-    for x in open.iter() {
-        if x.state == s {
-            println!(
-                "WARNING: Should remove s from open - needs: \
-            https://github.com/rust-lang/rust/issues/66724; \
-            This indicates there are cycles in the state space."
-            );
-        }
-    }
+    open.retain(|e| e.state != s);
     if data[&s].g as i64 != data[&s].rhs as i64 {
         if !closed.contains(&s) {
             open.push(util::HeapEntry::new_entry(
@@ -78,15 +69,12 @@ fn compute_path<PS: planner::ProblemSpace>(
         if data[&s.state].g > data[&s.state].rhs {
             data.get_mut(&s.state).unwrap().g = data[&s.state].rhs;
             closed.push(s.state);
-            for (s_dash, _) in ps.pred(&s.state) {
-                update_state(ps, s_dash, start, goal, data, open, closed, incons, eps);
-            }
         } else {
             data.get_mut(&s.state).unwrap().g = f64::INFINITY;
             update_state(ps, s.state, start, goal, data, open, closed, incons, eps);
-            for (s_dash, _) in ps.pred(&s.state) {
-                update_state(ps, s_dash, start, goal, data, open, closed, incons, eps);
-            }
+        }
+        for (s_dash, _) in ps.pred(&s.state) {
+            update_state(ps, s_dash, start, goal, data, open, closed, incons, eps);
         }
     }
 }

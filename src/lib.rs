@@ -1,5 +1,7 @@
 //! This is documentation for the `rusty_planner` crate.
 
+#![feature(binary_heap_retain)]
+
 /// some helper routines (not public)
 mod util;
 

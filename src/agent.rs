@@ -87,7 +87,7 @@ impl ZeroAgent {
     /// send a message to a particular peer.
     pub fn send_msg(&self, peer: &str, msg: &Msg) {
         let client = &self.ctxt.socket(zmq::REQ).unwrap();
-        client.connect(&peer).expect("Could not connect to peer");
+        client.connect(peer).expect("Could not connect to peer");
         client.send(msg.to_msg().as_str(), 0).unwrap();
         client.recv_msg(0).unwrap(); // Wait for ack...
     }
@@ -180,18 +180,16 @@ fn ping(ctxt: zmq::Context, my_ep: String, rcp: sync::Arc<sync::Mutex<Vec<String
                 let client = ctxt.socket(zmq::REQ).unwrap();
                 client.set_connect_timeout(2).unwrap();
                 // TODO: would be great to set: ZMQ_REQ_CORRELATE; not support atm.
-                client.connect(&peer).expect("Could not connect to peer");
+                client.connect(peer).expect("Could not connect to peer");
                 client.send(msg.to_msg().as_str(), 0).unwrap();
                 thread::sleep(time::Duration::from_millis(WAIT));
                 if client.recv_msg(zmq::DONTWAIT).is_err() {
                     dead_peers.push(peer.clone());
                 }
-                client.disconnect(&peer).unwrap();
+                client.disconnect(peer).unwrap();
             }
         }
-        for dead in dead_peers.iter() {
-            peers.retain(|x: &String| x != dead);
-        }
+        peers.retain(|x: &String| !dead_peers.contains(&x));
 
         if peers.is_empty() {
             break;

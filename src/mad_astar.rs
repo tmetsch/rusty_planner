@@ -206,6 +206,7 @@ pub fn solve<A: agent::Agent, PS: planner::ProblemSpace + planner::SharedStates>
             let s: util::HeapEntry<PS::State> = open.pop().unwrap();
             done = expand(ps, agent, s.state, goal, &mut data, &mut open, &mut closed);
         }
+        thread::sleep(time::Duration::from_millis(250));
     }
     traceback(agent, ps, start, goal, closed)
 }
