@@ -3,7 +3,10 @@ use std::thread;
 use std::time;
 use std::vec;
 
-// TODO: check usage of &str + lifetime vs String.
+use futures::executor;
+use futures::future;
+
+// TODO: check usage of &str + lifetime (won't work as listen/ping running thread require 'static lifetime) vs String.
 // TODO: look into caching connections, etc.
 // TODO: look into agents advertising capabilities - OCCI style of course :-)
 
@@ -163,6 +166,25 @@ fn listen(
 }
 
 ///
+/// Ping an individual peer; will return empty string if all is good, otherwise the URI.
+///
+async fn ping_peer(ctxt: &zmq::Context, peer: &str, msg: &Msg) -> Result<String, &'static str> {
+    let mut res: String = "".to_string();
+
+    let client: zmq::Socket = ctxt.socket(zmq::REQ).unwrap();
+    client.set_connect_timeout(2).unwrap();
+    // TODO: would be great to set: ZMQ_REQ_CORRELATE; not support atm.
+    client.connect(peer).expect("Could not connect to peer");
+    client.send(msg.to_msg().as_str(), 0).unwrap();
+    thread::sleep(time::Duration::from_millis(WAIT));
+    if client.recv_msg(zmq::DONTWAIT).is_err() {
+        res = peer.to_string();
+    }
+    client.disconnect(peer).unwrap();
+    Ok(res)
+}
+
+///
 /// Will on a given timout try to ping the host it knows and if needed remove peers from the list
 /// of known neighbours.
 ///
@@ -173,23 +195,19 @@ fn ping(ctxt: zmq::Context, my_ep: String, rcp: sync::Arc<sync::Mutex<Vec<String
         let mut peers: sync::MutexGuard<Vec<String>> = rcp.lock().unwrap();
         let joined = peers.join(",");
         let msg = Msg::Ping(joined);
-        let mut dead_peers: Vec<String> = vec::Vec::new();
-        for peer in peers.iter() {
-            if peer != &my_ep {
-                // Just to be safe (old socket could be in weird state) I'm getting a new socket...
-                let client = ctxt.socket(zmq::REQ).unwrap();
-                client.set_connect_timeout(2).unwrap();
-                // TODO: would be great to set: ZMQ_REQ_CORRELATE; not support atm.
-                client.connect(peer).expect("Could not connect to peer");
-                client.send(msg.to_msg().as_str(), 0).unwrap();
-                thread::sleep(time::Duration::from_millis(WAIT));
-                if client.recv_msg(zmq::DONTWAIT).is_err() {
-                    dead_peers.push(peer.clone());
+
+        let fut_values: _ = async {
+            let mut futures: Vec<_> = vec![];
+            for peer in peers.iter() {
+                if peer != &my_ep {
+                    futures.push(ping_peer(&ctxt, peer, &msg));
                 }
-                client.disconnect(peer).unwrap();
             }
-        }
-        peers.retain(|x: &String| !dead_peers.contains(&x));
+            let res: Vec<String> = future::try_join_all(futures).await.unwrap();
+            res
+        };
+        let dead_peers: Vec<String> = executor::block_on(fut_values);
+        peers.retain(|x: &String| !dead_peers.contains(x));
 
         if peers.is_empty() {
             break;
@@ -360,12 +378,12 @@ mod tests {
         let a_0 = agent::ZeroAgent::new("tcp://127.0.0.1:5002".to_string());
         a_0.activate();
         let a_1 = agent::ZeroAgent::new("tcp://127.0.0.1:5003".to_string());
-        a_1.add_peer("tcp://127.0.0.1:5003".to_string());
+        a_1.add_peer("tcp://127.0.0.1:5002".to_string());
         a_1.activate();
 
         thread::sleep(time::Duration::from_millis(2 * agent::WAIT));
         send_kill("tcp://127.0.0.1:5003");
-        thread::sleep(time::Duration::from_millis(2 * agent::WAIT));
+        thread::sleep(time::Duration::from_secs(2 * agent::TIMEOUT));
         // When a_1 is gone, a_0 should only know itself...
         assert_eq!(
             a_0.peers.lock().unwrap().to_vec(),

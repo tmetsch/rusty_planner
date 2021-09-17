@@ -10,6 +10,7 @@ categories = ["algorithms", "science"]
 keywords = ["ai", "planning", "reasoning"]
 
 [dependencies]
+futures = "^0.3"
 zmq = "^0.9"
 
 [[example]]

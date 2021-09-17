@@ -241,7 +241,6 @@ mod tests {
 
         fn pred(&self, state: &Self::State) -> Self::Iter {
             match *state {
-                0 => vec![].into_iter(),
                 3 => vec![(1, 1.0), (2, 0.2)].into_iter(),
                 5 => vec![(4, 1.0)].into_iter(),
                 6 => vec![(5, 1.0)].into_iter(),
