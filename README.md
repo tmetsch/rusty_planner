@@ -8,25 +8,25 @@ run:
   * Generic Planning Algorithms
      - [x] M. Likhachev, D. Ferguson, G. Gordon, A. Stentz, and S. Thrun, **Anytime dynamic A\*: an anytime, replanning 
        algorithm**. Fifteenth International Conference on International Conference on Automated Planning and Scheduling
-       (ICAPS’05), 2005, https://dl.acm.org/doi/10.5555/3037062.3037096
+       (ICAPS’05), 2005, <https://dl.acm.org/doi/10.5555/3037062.3037096>
      - [x] S. Koenig and M. Likhachev, **D\*lite**. Eighteenth national conference on Artificial intelligence, 2002,
-       https://dl.acm.org/doi/10.5555/777092.777167
+       <https://dl.acm.org/doi/10.5555/777092.777167>
      - [ ] D. Knuth, **Dancing Links**, Millennial Perspectives in Computer Science., 
-       https://arxiv.org/pdf/cs/0011047.pdf
+       <https://arxiv.org/pdf/cs/0011047.pdf>
      - [x] S. Gelly, Y. Wang, R. Munos, and O. Teytaud **Modification of UCT with Patterns in Monte-Carlo Go**. 
-       Technical report, INRIA, 2006, http://hal.inria.fr/docs/00/12/15/16/PDF/RR-6062.pdf.
+       Technical report, INRIA, 2006, <http://hal.inria.fr/docs/00/12/15/16/PDF/RR-6062.pdf>
      - [x] M. Zweben, E. Davis, B. Daun and M. J. Deale, **Scheduling and rescheduling with iterative repair**. IEEE 
-       Transactions on Systems, Man, and Cybernetics, 1993, https://ieeexplore.ieee.org/document/257756
+       Transactions on Systems, Man, and Cybernetics, 1993, <https://ieeexplore.ieee.org/document/257756>
   * Multi-Agent Planning - Coordination, Negotiation/Bidding, Coalition Formation:
      - [ ] T. Sandholm, K. Larson, M. Andersson, O. Shehory, and F. Tohmé, **Coalition structure generation with worst
-       case guarantees**. Artif. Intell. 111, 1999, https://doi.org/10.1016/S0004-3702(99)00036-3
+       case guarantees**. Artif. Intell. 111, 1999, <https://doi.org/10.1016/S0004-3702(99)00036-3v>
      - [ ] David Silver,  **Cooperative pathfinding**. First AAAI Conference on Artificial Intelligence and Interactive
-       Digital Entertainment (AIIDE’05), 2005, https://dl.acm.org/doi/10.5555/3022473.3022494. 
+       Digital Entertainment (AIIDE’05), 2005, <https://dl.acm.org/doi/10.5555/3022473.3022494>
      - [x] R. Nissim and R. Brafman, **Distributed Heuristic Forward Search for Multi-Agent Systems**. arXiv, 2013. 
-       https://arxiv.org/abs/1306.5858
+       <https://arxiv.org/abs/1306.5858>
      - [ ] O. Shehory and S. Kraus, **Task allocation via coalition formation among autonomous agents**. 14th 
        international joint conference on Artificial intelligence - Volume 1 (IJCAI’95), 1995, 
-       https://dl.acm.org/doi/10.5555/1625855.1625941.
+       <https://dl.acm.org/doi/10.5555/1625855.1625941>
 
 **_Note_**: This library is still work in progress - and mostly for me to get familiar with Rust. Use at 
 your own risk; refactorings & bigger changes might still happen.  

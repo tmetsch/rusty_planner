@@ -1,5 +1,6 @@
 //! This is documentation for the `rusty_planner` crate.
 
+#![doc = include_str!("../README.md")]
 #![feature(binary_heap_retain)]
 
 /// some helper routines (not public)

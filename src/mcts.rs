@@ -35,13 +35,12 @@ fn best_child<'a, PS: planner::ProblemSpace + planner::Anytime>(
     let mut max_val: f64 = 0.0;
     let mut res = v;
     for child in children.get(&v).unwrap() {
-        let tmp;
-        if c_val > 0.0 {
-            tmp = (q_vals[child] / n_vals[child] as f64)
-                + c_val * (((2.0 * (n_vals[&v] as f64).ln()) / n_vals[child] as f64).sqrt());
+        let tmp: f64 = if c_val > 0.0 {
+            (q_vals[child] / n_vals[child] as f64)
+                + c_val * (((2.0 * (n_vals[&v] as f64).ln()) / n_vals[child] as f64).sqrt())
         } else {
-            tmp = q_vals[child] / n_vals[child] as f64;
-        }
+            q_vals[child] / n_vals[child] as f64
+        };
         if tmp >= max_val {
             max_val = tmp;
             res = *child;
