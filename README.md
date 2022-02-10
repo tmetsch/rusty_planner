@@ -19,7 +19,7 @@ run:
        Transactions on Systems, Man, and Cybernetics, 1993, <https://ieeexplore.ieee.org/document/257756>
   * Multi-Agent Planning - Coordination, Negotiation/Bidding, Coalition Formation:
      - [ ] T. Sandholm, K. Larson, M. Andersson, O. Shehory, and F. Tohmé, **Coalition structure generation with worst
-       case guarantees**. Artif. Intell. 111, 1999, <https://doi.org/10.1016/S0004-3702(99)00036-3v>
+       case guarantees**. Artif. Intell. 111, 1999, <https://doi.org/10.1016/S0004-3702(99)00036-3>
      - [ ] David Silver,  **Cooperative pathfinding**. First AAAI Conference on Artificial Intelligence and Interactive
        Digital Entertainment (AIIDE’05), 2005, <https://dl.acm.org/doi/10.5555/3022473.3022494>
      - [x] R. Nissim and R. Brafman, **Distributed Heuristic Forward Search for Multi-Agent Systems**. arXiv, 2013. 
