@@ -20,7 +20,7 @@ fn update_state<PS: planner::ProblemSpace>(
     goal: PS::State,
     data: &mut collections::HashMap<PS::State, util::StateData>,
     open: &mut collections::BinaryHeap<util::HeapEntry<PS::State>>,
-    closed: &mut Vec<PS::State>,
+    closed: &mut [PS::State],
     incons: &mut Vec<PS::State>,
     eps: f64,
 ) {

@@ -198,7 +198,8 @@ fn ping(ctxt: zmq::Context, my_ep: String, rcp: sync::Arc<sync::Mutex<Vec<String
 
         let fut_values: _ = async {
             let mut futures: Vec<_> = vec![];
-            for peer in peers.iter() {
+            let tmp_iter = peers.iter();
+            for peer in tmp_iter {
                 if peer != &my_ep {
                     futures.push(ping_peer(&ctxt, peer, &msg));
                 }
@@ -229,7 +230,8 @@ impl Agent for ZeroAgent {
     fn broadcast(&self, msg: &str) {
         let rcp: sync::Arc<sync::Mutex<Vec<String>>> = sync::Arc::clone(&self.peers);
         let peers: sync::MutexGuard<Vec<String>> = rcp.lock().unwrap();
-        for peer in peers.iter() {
+        let tmp_peers = peers.iter();
+        for peer in tmp_peers {
             if peer != &self.ep {
                 self.send_msg(peer, &Msg::Message(msg.to_string()));
             }
