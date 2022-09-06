@@ -9,9 +9,12 @@ repository = "https://github.com/tmetsch/rusty_planner/"
 categories = ["algorithms", "science"]
 keywords = ["ai", "planning", "reasoning"]
 
+[features]
+multi_agent = ["dep:futures", "dep:zmq"]
+
 [dependencies]
-futures = "^0.3"
-zmq = "^0.9"
+futures = {version="~0.3", optional=true}
+zmq = {version="~0.9", optional=true}
 
 [[example]]
 name = "example_0"
