@@ -6,9 +6,6 @@
 /// some helper routines (not public)
 mod util;
 
-/// Basic support for multi-agent distributed systems.
-#[cfg(feature = "multi_agent")]
-pub mod agent;
 /// Module with some generic traits used by various algorithms.
 pub mod planner;
 

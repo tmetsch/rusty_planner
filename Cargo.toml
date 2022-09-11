@@ -10,11 +10,10 @@ categories = ["algorithms", "science"]
 keywords = ["ai", "planning", "reasoning"]
 
 [features]
-multi_agent = ["dep:futures", "dep:zmq"]
+multi_agent = ["dep:rusty_agent"]
 
 [dependencies]
-futures = {version="~0.3", optional=true}
-zmq = {version="~0.9", optional=true}
+rusty_agent = {version="~0.1.0", optional=true}
 
 [[example]]
 name = "example_0"

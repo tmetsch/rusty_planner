@@ -3,9 +3,10 @@ use std::collections;
 use std::thread;
 use std::time;
 
-use crate::agent;
 use crate::planner;
 use crate::util;
+
+use rusty_agent::agent;
 
 struct StateValues {
     g_val: f64,
@@ -216,10 +217,11 @@ mod tests {
     use std::collections;
     use std::vec;
 
-    use crate::agent;
     use crate::mad_astar;
     use crate::planner;
     use crate::util;
+
+    use rusty_agent::agent;
 
     struct SimpleExample {}
 
