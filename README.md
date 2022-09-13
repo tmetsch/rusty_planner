@@ -31,6 +31,8 @@ run:
 **_Note_**: This library is still work in progress - and mostly for me to get familiar with Rust. Use at 
 your own risk; refactorings & bigger changes might still happen.  
 
+To make use of the distributed decision-making algorithms, please ensure to enable the **multi_agent** feature. 
+
 ## Motivation
 
 While Deep Learning algorithms are currently a hot topic, it is also necessary to have planning & reasoning capabilities

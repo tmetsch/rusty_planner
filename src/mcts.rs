@@ -169,7 +169,7 @@ mod tests {
 
     struct StateGraph {}
 
-    impl planner::ProblemSpace for StateGraph {
+    impl ProblemSpace for StateGraph {
         type State = i32;
         type Iter = vec::IntoIter<(Self::State, f64)>;
 
