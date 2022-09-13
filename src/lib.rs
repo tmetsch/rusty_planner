@@ -6,8 +6,6 @@
 /// some helper routines (not public)
 mod util;
 
-/// Basic support for multi-agent distributed systems.
-pub mod agent;
 /// Module with some generic traits used by various algorithms.
 pub mod planner;
 
@@ -21,4 +19,5 @@ pub mod iterative_repair;
 pub mod mcts;
 
 /// Module implementing the Multi-Agent Distributed forward A* search algorithm.
+#[cfg(feature = "multi_agent")]
 pub mod mad_astar;

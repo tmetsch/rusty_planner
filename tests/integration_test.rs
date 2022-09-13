@@ -2,6 +2,7 @@ extern crate rusty_planner;
 
 use std::sync::mpsc;
 use std::thread;
+#[cfg(feature = "multi_agent")]
 use std::time;
 use std::vec;
 
@@ -59,6 +60,7 @@ fn test_simple_example() {
     plnr.join().unwrap();
 }
 
+#[cfg(feature = "multi_agent")]
 #[test]
 fn test_multi_agent_example() {
     struct PaperExample {
@@ -493,8 +495,10 @@ fn test_multi_agent_example() {
     }
 
     // Setup the multi-agent system-of-systems.
-    let agent_1 = rusty_planner::agent::ZeroAgent::new(String::from("tcp://127.0.0.1:8001"));
-    let agent_2 = rusty_planner::agent::ZeroAgent::new(String::from("tcp://127.0.0.1:8002"));
+    let agent_1 =
+        rusty_agent::agent::ZeroAgent::builder(String::from("tcp://127.0.0.1:8001")).build();
+    let agent_2 =
+        rusty_agent::agent::ZeroAgent::builder(String::from("tcp://127.0.0.1:8002")).build();
     agent_1.add_peer(String::from("tcp://127.0.0.1:8002"));
     agent_1.activate();
     agent_2.activate();
@@ -526,12 +530,12 @@ fn test_multi_agent_example() {
     thread::spawn(move || {
         rusty_planner::mad_astar::solve(&agent_1, &ps_1, start, goal);
         thread::sleep(time::Duration::from_secs(1));
-        agent_1.send_msg("tcp://127.0.0.1:8001", &rusty_planner::agent::Msg::Kill());
+        agent_1.send_msg("tcp://127.0.0.1:8001", &rusty_agent::agent::Msg::Kill());
     });
     let th2 = thread::spawn(move || {
         let res = rusty_planner::mad_astar::solve(&agent_2, &ps_2, start, goal);
         thread::sleep(time::Duration::from_secs(1));
-        agent_2.send_msg("tcp://127.0.0.1:8002", &rusty_planner::agent::Msg::Kill());
+        agent_2.send_msg("tcp://127.0.0.1:8002", &rusty_agent::agent::Msg::Kill());
         res
     });
 

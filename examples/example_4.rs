@@ -1,9 +1,14 @@
+#[cfg(feature = "multi_agent")]
 use std::env;
+#[cfg(feature = "multi_agent")]
 use std::thread;
+#[cfg(feature = "multi_agent")]
 use std::time;
 use std::vec;
 
-use rusty_planner::agent;
+#[cfg(feature = "multi_agent")]
+use rusty_agent::agent;
+#[cfg(feature = "multi_agent")]
 use rusty_planner::mad_astar;
 use rusty_planner::planner;
 
@@ -93,6 +98,7 @@ impl planner::SharedStates for Picker {
     }
 }
 
+#[cfg(feature = "multi_agent")]
 /// Starts an agent of a multi-agent system.
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -102,7 +108,7 @@ fn main() {
 
     let picker_id = &args[1];
     let ep = "tcp://127.0.0.1:800".to_owned() + picker_id;
-    let agent = agent::ZeroAgent::new(ep.clone());
+    let agent = agent::ZeroAgent::builder(ep.clone()).build();
 
     // If I'm not the the first agent - connect myself to the one started before me...
     if picker_id
@@ -148,4 +154,9 @@ fn main() {
         print!("{:?} -> ", step);
     }
     println!("\ndone...");
+}
+
+#[cfg(not(feature = "multi_agent"))]
+fn main() {
+    println!("Make sure to run this example with multi_agent feature enabled...");
 }
