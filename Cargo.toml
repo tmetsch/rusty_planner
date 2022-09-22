@@ -34,6 +34,7 @@ path = "examples/example_3.rs"
 [[example]]
 name = "example_4"
 path = "examples/example_4.rs"
+required-features = ["multi_agent"]
 
 [[example]]
 name = "example_5"
