@@ -78,6 +78,7 @@ fn tree_policy<'a, PS: planner::ProblemSpace + planner::Anytime>(
 fn default_policy<PS: planner::ProblemSpace + planner::Anytime>(
     ps: &PS,
     v: PS::State,
+    goal: PS::State,
     parents: &mut collections::HashMap<PS::State, PS::State>,
 ) -> f64 {
     let mut s = v;
@@ -96,11 +97,14 @@ fn default_policy<PS: planner::ProblemSpace + planner::Anytime>(
         }
         parents.insert(tmp, s);
         s = tmp;
-        reward += min_val;
+
+        reward += 1.0 + (1.0 / min_val);
+        if s == goal {
+            reward *= 2.0;
+        }
     }
 
-    // TODO: Check this - currently solution with lowest cost to get there is best.
-    reward = 1.0 + (1.0 / reward);
+    // Currently solution with lowest cost to get there is best.
     reward
 }
 
@@ -148,7 +152,7 @@ pub fn solve<PS: planner::ProblemSpace + planner::Anytime>(
                 collections::HashMap::new();
             let v_i = tree_policy(ps, curr, &mut children, &n_vals, &q_vals);
             parents.insert(v_i, curr);
-            let delta = default_policy(ps, v_i, &mut parents);
+            let delta = default_policy(ps, v_i, goal, &mut parents);
             backup(ps, v_i, delta, &mut n_vals, &mut q_vals, &parents);
             i += 1;
         }
@@ -244,7 +248,7 @@ mod tests {
             <StateGraph as ProblemSpace>::State,
         > = collections::HashMap::new();
 
-        mcts::default_policy(&ps, 1, &mut parents);
+        mcts::default_policy(&ps, 1, 6, &mut parents);
     }
 
     #[test]
@@ -368,9 +372,9 @@ mod tests {
             <StateGraph as ProblemSpace>::State,
         > = collections::HashMap::new();
 
-        let res = mcts::default_policy(&ps, 1, &mut parents);
-        // cost of path (1->2->4->5->6) = 3.6 --> 1 + 1/3.6 = 1.28 --> round() --> 1.0
-        assert_eq!(res.round(), 1.0);
+        let res = mcts::default_policy(&ps, 1, 6, &mut parents);
+        // cost of path (1->2->4->5->6) = (2.25 + 2 + 2.25 + 2) * 2 --> 17.0
+        assert_eq!(res, 17.0);
     }
 
     #[test]
