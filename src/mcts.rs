@@ -24,8 +24,8 @@ fn expand<PS: planner::ProblemSpace>(
 }
 
 /// Determine the best possible next step.
-fn best_child<'a, PS: planner::ProblemSpace + planner::Anytime>(
-    _: &'a PS,
+fn best_child<PS: planner::ProblemSpace + planner::Anytime>(
+    _: &PS,
     v: PS::State,
     children: &mut collections::HashMap<PS::State, Vec<PS::State>>,
     n_vals: &collections::HashMap<PS::State, u64>,
@@ -54,8 +54,8 @@ fn best_child<'a, PS: planner::ProblemSpace + planner::Anytime>(
 }
 
 /// Select of expand a state.
-fn tree_policy<'a, PS: planner::ProblemSpace + planner::Anytime>(
-    ps: &'a PS,
+fn tree_policy<PS: planner::ProblemSpace + planner::Anytime>(
+    ps: &PS,
     state: PS::State,
     children: &mut collections::HashMap<PS::State, Vec<PS::State>>,
     n_vals: &collections::HashMap<PS::State, u64>,
