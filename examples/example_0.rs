@@ -42,13 +42,13 @@ impl<'a> iterative_repair::Problem for Chess<'a> {
     // conflict between queens can be fixed by moving away; or starting @ 0 if run our of space.
     fn fix_conflict(&mut self, conflict: &Self::Conflict) {
         if self.board[&conflict.0].x == self.board[&conflict.1].x {
-            if self.board[&conflict.0].x + 1 <= WIDTH {
+            if self.board[&conflict.0].x < WIDTH {
                 self.board.get_mut(&conflict.0).unwrap().x += 1;
             } else {
                 self.board.get_mut(&conflict.0).unwrap().x += 0;
             }
         } else if self.board[&conflict.0].y == self.board[&conflict.1].y {
-            if self.board[&conflict.0].y + 1 <= HEIGHT {
+            if self.board[&conflict.0].y < HEIGHT {
                 self.board.get_mut(&conflict.0).unwrap().y += 1;
             } else {
                 self.board.get_mut(&conflict.0).unwrap().y += 0;

@@ -55,7 +55,7 @@ fn callback(path: Vec<i32>) {
     for x in &path {
         print!(" -> {}", x);
     }
-    print!("\n");
+    println!();
 }
 
 /// Main.

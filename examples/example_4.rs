@@ -61,10 +61,7 @@ impl planner::ProblemSpace for Picker {
 
 impl planner::SharedStates for Picker {
     fn is_public(&self, state: &Self::State) -> bool {
-        match state {
-            (1, 1) => true,
-            _ => false,
-        }
+        matches!(state, (1, 1))
     }
 
     fn serialize(&self, msg_type: u8, state: &Self::State, para: Vec<f64>) -> String {
@@ -122,7 +119,7 @@ fn main() {
     }
 
     // Setup...
-    let mut ps = Picker {
+    let ps = Picker {
         pick_id: picker_id.parse().unwrap(),
     };
     let ths = agent.activate();
@@ -144,7 +141,7 @@ fn main() {
     // Solve this mystery.
     let start = (0, 0);
     let goal = (2, 2);
-    let res = mad_astar::solve(&agent, &mut ps, start, goal);
+    let res = mad_astar::solve(&agent, &ps, start, goal);
     agent.send_msg(&ep, &agent::Msg::Kill());
     ths.0.join().unwrap();
     ths.1.join().unwrap();

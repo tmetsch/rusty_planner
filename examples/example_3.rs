@@ -61,7 +61,7 @@ fn callback(path: Vec<(usize, usize)>) {
     for x in &path {
         print!(" -> ({}, {})", x.0, x.1);
     }
-    print!("\n");
+    println!();
 }
 
 ///
