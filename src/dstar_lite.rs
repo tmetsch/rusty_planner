@@ -197,9 +197,9 @@ mod tests {
         }
     }
 
-    fn callback(_: vec::Vec<i32>) {}
+    fn callback(_: Vec<i32>) {}
 
-    fn callback_test(res: vec::Vec<i32>) {
+    fn callback_test(res: Vec<i32>) {
         assert_eq!(res, [1, 2, 4]);
     }
 

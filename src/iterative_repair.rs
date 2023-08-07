@@ -88,7 +88,7 @@ mod tests {
         channels: collections::HashMap<i32, Channel>,
     }
 
-    impl iterative_repair::Problem for ScheduleProblem {
+    impl Problem for ScheduleProblem {
         type Conflict = (i32, i32);
         type Iter = vec::IntoIter<(Self::Conflict, f64)>;
 

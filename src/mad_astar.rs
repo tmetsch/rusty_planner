@@ -280,7 +280,7 @@ mod tests {
     }
 
     struct SimpleAgent {
-        msgs: vec::Vec<String>,
+        msgs: Vec<String>,
     }
 
     impl agent::Agent for SimpleAgent {
