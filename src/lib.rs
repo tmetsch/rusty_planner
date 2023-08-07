@@ -5,6 +5,10 @@
 /// some helper routines (not public)
 mod util;
 
+/// Module for generating mazes.
+#[cfg(feature = "random")]
+pub mod maze;
+
 /// Module with some generic traits used by various algorithms.
 pub mod planner;
 
