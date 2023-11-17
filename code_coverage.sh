@@ -4,8 +4,8 @@ export CARGO_INCREMENTAL=0
 export RUSTFLAGS="-Zprofile -Ccodegen-units=1 -Copt-level=0 -Clink-dead-code -Coverflow-checks=off -Zpanic_abort_tests -Cpanic=abort"
 export RUSTDOCFLAGS="-Cpanic=abort"
 
-cargo +nightly build --features random,multi_agent
-cargo +nightly test --features random,multi_agent
+cargo +nightly build  --all-features
+cargo +nightly test  --all-features
 
 if ! [ -x "$(command -v grcov)" ];
 then

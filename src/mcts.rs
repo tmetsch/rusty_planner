@@ -11,7 +11,7 @@ fn expand<PS: planner::ProblemSpace>(
     let mut res: PS::State = v;
     for item in ps.succ(&v) {
         if !children.contains_key(&v) || !children[&v].contains(&item.0) {
-            children.entry(v).or_insert_with(Vec::new).push(item.0);
+            children.entry(v).or_default().push(item.0);
             res = item.0;
             break;
         }
