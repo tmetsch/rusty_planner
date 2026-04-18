@@ -3,7 +3,7 @@ use std::collections;
 use std::iter::FromIterator;
 
 use rand::prelude::SliceRandom;
-use rand::Rng;
+use rand::RngExt;
 
 ///
 /// Represents a maze in form of a set of coordinates defining successors and predecessors.
@@ -26,14 +26,16 @@ pub fn generate(size: i32) -> Maze {
         successors: collections::HashMap::new(),
         predecessors: collections::HashMap::new(),
     };
-    let mut directions = [(0, -1), (1, 0), (-1, 0), (0, 1)]; // [N, S, E, W]
+    let mut directions = [(0, -1), (1, 0), (-1, 0), (0, 1)];
     let mut cells = vec![(0, 0)];
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
     while !cells.is_empty() {
-        let mut index = Some(rng.gen_range(0..cells.len()));
+        let mut index = Some(rng.random_range(0..cells.len()));
         let curr = cells[index.unwrap_or(0)];
-        directions.shuffle(&mut rand::thread_rng());
+
+        directions.shuffle(&mut rng);
+
         for dir in directions {
             let ngbh = (curr.0 + dir.0, curr.1 + dir.1);
             if ngbh.0 < 0 || ngbh.0 >= size || ngbh.1 < 0 || ngbh.1 >= size {
