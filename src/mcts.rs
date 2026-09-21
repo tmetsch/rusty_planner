@@ -34,7 +34,7 @@ fn best_child<PS: planner::ProblemSpace + planner::Anytime>(
 ) -> Option<PS::State> {
     let mut max_val: f64 = 0.0;
     let mut res = v;
-    for child in children.get(&v).unwrap() {
+    for child in &children[&v] {
         let tmp: f64 = if c_val > 0.0 {
             (q_vals[child] / n_vals[child] as f64)
                 + c_val * (((2.0 * (n_vals[&v] as f64).ln()) / n_vals[child] as f64).sqrt())
@@ -63,11 +63,11 @@ fn tree_policy<PS: planner::ProblemSpace + planner::Anytime>(
 ) -> PS::State {
     let mut v = state;
     while ps.succ(&v).count() != 0 {
-        if !children.contains_key(&v) || ps.succ(&v).count() != (children.get(&v).unwrap()).len() {
-            v = expand(ps, v, children).unwrap();
+        if !children.contains_key(&v) || ps.succ(&v).count() != children[&v].len() {
+            v = expand(ps, v, children).expect("No child to expand");
             break;
         } else {
-            v = best_child(ps, v, children, n_vals, q_vals, 1.0).unwrap();
+            v = best_child(ps, v, children, n_vals, q_vals, 1.0).expect("No best child found");
         }
     }
     v
@@ -122,7 +122,7 @@ fn backup<PS: planner::ProblemSpace + planner::Anytime>(
         *n_vals.entry(node).or_default() += 1;
         *q_vals.entry(node).or_default() += delta;
         if parents.contains_key(&node) {
-            node = *parents.get(&node).unwrap();
+            node = parents[&node];
         } else {
             break;
         }
@@ -156,7 +156,8 @@ pub fn solve<PS: planner::ProblemSpace + planner::Anytime>(
             backup(ps, v_i, delta, &mut n_vals, &mut q_vals, &parents);
             i += 1;
         }
-        curr = best_child(ps, curr, &mut children, &n_vals, &q_vals, 0.0).unwrap();
+        curr = best_child(ps, curr, &mut children, &n_vals, &q_vals, 0.0)
+            .expect("No best child found - MCTS cannot proceed");
         ps.callback(&curr);
     }
     curr
@@ -257,12 +258,12 @@ mod tests {
 
         let mut visits: collections::HashMap<i32, u64> = collections::HashMap::new();
         let mut q_vals: collections::HashMap<i32, f64> = collections::HashMap::new();
-        let mut parents: collections::HashMap<
+        let parents: collections::HashMap<
             <StateGraph as ProblemSpace>::State,
             <StateGraph as ProblemSpace>::State,
         > = collections::HashMap::new();
 
-        mcts::backup(&ps, 1, 1.0, &mut visits, &mut q_vals, &mut parents);
+        mcts::backup(&ps, 1, 1.0, &mut visits, &mut q_vals, &parents);
     }
 
     #[test]
@@ -391,7 +392,7 @@ mod tests {
         parents.insert(4, 3);
         parents.insert(3, 2);
         parents.insert(2, 1);
-        mcts::backup(&ps, 4, 1.2, &mut visits, &mut q_vals, &mut parents);
+        mcts::backup(&ps, 4, 1.2, &mut visits, &mut q_vals, &parents);
 
         assert_eq!(visits[&3], 1);
         assert_eq!(visits[&1], 1);

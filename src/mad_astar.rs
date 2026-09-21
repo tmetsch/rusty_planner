@@ -1,4 +1,3 @@
-use std::cmp;
 use std::collections;
 use std::thread;
 use std::time;
@@ -32,12 +31,12 @@ fn process_message<PS: planner::ProblemSpace>(
     }
     if !(in_open && closed.contains_key(&s)) || data[&s].g_val > para.g_val {
         open.push(util::HeapEntry::new_entry(s, (para.g_val, 0.0)));
-        let h_val = cmp::max(ps.heuristic(&s, &goal) as i64, para.h_val as i64);
+        let h_val = ps.heuristic(&s, &goal).max(para.h_val);
         data.insert(
             s,
             StateValues {
                 g_val: para.g_val,
-                h_val: h_val as f64,
+                h_val,
             },
         );
     }
@@ -62,7 +61,8 @@ fn expand<A: agent::Agent, PS: planner::ProblemSpace + planner::SharedStates>(
     // if we've found a public state --> tell others.
     if ps.is_public(&s)
         && (!closed.contains_key(&s)
-            || closed.get(&s).unwrap() > &(data[&s].g_val + ps.heuristic(&s, &goal)))
+            || closed.get(&s).expect("State not in closed")
+                > &(data[&s].g_val + ps.heuristic(&s, &goal)))
     {
         agent.broadcast(&ps.serialize(0, &s, vec![data[&s].g_val, data[&s].h_val]))
     }
@@ -86,7 +86,7 @@ fn expand<A: agent::Agent, PS: planner::ProblemSpace + planner::SharedStates>(
         }
         let mut old_f_val = -1.0;
         if closed.contains_key(&s_dash) {
-            old_f_val = *closed.get(&s_dash).unwrap();
+            old_f_val = *closed.get(&s_dash).expect("State not in closed");
         }
         if !closed.contains_key(&s_dash) || (old_f_val > 0.0 && f_val < old_f_val) {
             open.push(util::HeapEntry::new_entry(s_dash, (f_val, 0.0)))
@@ -204,7 +204,7 @@ pub fn solve<A: agent::Agent, PS: planner::ProblemSpace + planner::SharedStates>
             }
         }
         if !open.is_empty() {
-            let s: util::HeapEntry<PS::State> = open.pop().unwrap();
+            let s: util::HeapEntry<PS::State> = open.pop().expect("Open set is empty");
             done = expand(ps, agent, s.state, goal, &mut data, &mut open, &mut closed);
         }
         thread::sleep(time::Duration::from_millis(250));
@@ -427,25 +427,25 @@ mod tests {
             },
         );
         let res = mad_astar::expand(&ps, &agent, 0, 3, &mut data, &mut open, &mut closed);
-        assert_eq!(res, false);
+        assert!(!res);
 
         // found a public state.
         let res = mad_astar::expand(&ps, &agent, 1, 3, &mut data, &mut open, &mut closed);
-        assert_eq!(res, false);
+        assert!(!res);
         assert_eq!(data[&1].g_val, 0.7);
 
         // found a better path.
         mad_astar::expand(&ps, &agent, 2, 3, &mut data, &mut open, &mut closed);
-        assert_eq!(data[&2].g_val as i64, 0.8 as i64);
+        assert!((data[&2].g_val - 0.8).abs() < f64::EPSILON);
 
         // already expanded...
         mad_astar::expand(&ps, &agent, 1, 3, &mut data, &mut open, &mut closed);
-        assert_eq!(data[&2].g_val as i64, 0.8 as i64);
+        assert!((data[&2].g_val - 0.8).abs() < f64::EPSILON);
 
         // found the goal.
         let res = mad_astar::expand(&ps, &agent, 3, 3, &mut data, &mut open, &mut closed);
-        assert_eq!(res, true);
-        assert_eq!(closed.contains_key(&3), true);
+        assert!(res);
+        assert!(closed.contains_key(&3));
     }
 
     #[test]

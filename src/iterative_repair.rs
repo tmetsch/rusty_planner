@@ -47,7 +47,6 @@ pub fn solve<PS: Problem>(ps: &mut PS, steps: i32) -> (bool, i32) {
     let mut iterations: i32 = 0;
     for i in 0..steps {
         iterations = i;
-        // TODO: find nicer way to push items on max-heap.
         let mut heap: collections::BinaryHeap<util::HeapEntry<PS::Conflict>> =
             collections::BinaryHeap::new();
         for item in ps.find_conflicts() {
@@ -57,7 +56,7 @@ pub fn solve<PS: Problem>(ps: &mut PS, steps: i32) -> (bool, i32) {
             });
         }
         if !heap.is_empty() {
-            let conflict: PS::Conflict = heap.pop().unwrap().state;
+            let conflict: PS::Conflict = heap.pop().expect("Heap is empty").state;
             ps.fix_conflict(&conflict);
         // TODO: trace conflicts solved - and if we find repetition of fixes -> break.
         } else {
@@ -102,19 +101,19 @@ mod tests {
                         if chan.iden == self.channels[&(iden + i + 1)].iden {
                             res.push((
                                 (*iden, (iden + i + 1)),
-                                -1.0 * (chan.iden - self.channels[&(iden + i + 1)].iden) as f64,
+                                -((chan.iden - self.channels[&(iden + i + 1)].iden) as f64),
                             ));
                         }
                     }
                 }
                 // ngbh below me...
-                if (iden + SIZE) < self.channels.len() as i32 {
-                    if chan.iden == self.channels[&(iden + SIZE)].iden {
-                        res.push((
-                            (*iden, (iden + SIZE)),
-                            -1.0 * (chan.iden - self.channels[&(iden + SIZE)].iden) as f64,
-                        ));
-                    }
+                if (iden + SIZE) < self.channels.len() as i32
+                    && chan.iden == self.channels[&(iden + SIZE)].iden
+                {
+                    res.push((
+                        (*iden, (iden + SIZE)),
+                        -((chan.iden - self.channels[&(iden + SIZE)].iden) as f64),
+                    ));
                 }
             }
             res.into_iter()
@@ -122,9 +121,15 @@ mod tests {
 
         fn fix_conflict(&mut self, conflict: &Self::Conflict) {
             if self.channels[&conflict.0].iden < 16 {
-                self.channels.get_mut(&conflict.0).unwrap().iden += 1;
+                self.channels
+                    .get_mut(&conflict.0)
+                    .expect("Channel not found")
+                    .iden += 1;
             } else {
-                self.channels.get_mut(&conflict.0).unwrap().iden = 0;
+                self.channels
+                    .get_mut(&conflict.0)
+                    .expect("Channel not found")
+                    .iden = 0;
             }
         }
     }
@@ -167,7 +172,7 @@ mod tests {
         let mut ps = ScheduleProblem { channels: data };
         // 10 steps will do @ only 2 conflicts.
         let res = iterative_repair::solve(&mut ps, 10);
-        assert_eq!(res.0, true); // solution is possible...
+        assert!(res.0); // solution is possible...
         assert_eq!(res.1, 2); // two conflicts to repair...
         assert_eq!(ps.find_conflicts().len(), 0);
     }

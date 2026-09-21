@@ -13,6 +13,7 @@ fn key(data: &util::StateData, h: f64, eps: f64) -> (f64, f64) {
 }
 
 /// Update the state's information.
+#[allow(clippy::too_many_arguments)]
 fn update_state<PS: planner::ProblemSpace>(
     ps: &PS,
     s: PS::State,
@@ -35,10 +36,10 @@ fn update_state<PS: planner::ProblemSpace>(
                 tmp = item.1 + data[&item.0].g;
             }
         }
-        data.get_mut(&s).unwrap().rhs = tmp;
+        data.get_mut(&s).expect("State not in data").rhs = tmp;
     }
     open.retain(|e| e.state != s);
-    if data[&s].g as i64 != data[&s].rhs as i64 {
+    if (data[&s].g - data[&s].rhs).abs() > f64::EPSILON {
         if !closed.contains(&s) {
             open.push(util::HeapEntry::new_entry(
                 s,
@@ -51,6 +52,7 @@ fn update_state<PS: planner::ProblemSpace>(
 }
 
 /// Compute or improve the path between start & goal.
+#[allow(clippy::too_many_arguments)]
 fn compute_path<PS: planner::ProblemSpace>(
     ps: &PS,
     start: PS::State,
@@ -62,15 +64,16 @@ fn compute_path<PS: planner::ProblemSpace>(
     eps: f64,
 ) {
     while (!open.is_empty())
-        && ((open.peek().unwrap().keys < key(&data[&start], ps.heuristic(&start, &start), eps))
-            || (data[&start].rhs as i64 != data[&start].g as i64))
+        && ((open.peek().expect("Open set is empty").keys
+            < key(&data[&start], ps.heuristic(&start, &start), eps))
+            || ((data[&start].rhs - data[&start].g).abs() > f64::EPSILON))
     {
-        let s: util::HeapEntry<PS::State> = open.pop().unwrap();
+        let s: util::HeapEntry<PS::State> = open.pop().expect("Open set is empty");
         if data[&s.state].g > data[&s.state].rhs {
-            data.get_mut(&s.state).unwrap().g = data[&s.state].rhs;
+            data.get_mut(&s.state).expect("State not in data").g = data[&s.state].rhs;
             closed.push(s.state);
         } else {
-            data.get_mut(&s.state).unwrap().g = f64::INFINITY;
+            data.get_mut(&s.state).expect("State not in data").g = f64::INFINITY;
             update_state(ps, s.state, start, goal, data, open, closed, incons, eps);
         }
         for (s_dash, _) in ps.pred(&s.state) {
@@ -337,7 +340,7 @@ mod tests {
                 contains = true;
             }
         }
-        assert_eq!(contains, true); // should have been added to list...
+        assert!(contains); // should have been added to list...
 
         closed.push(s);
         any_dyn_astar::update_state(
@@ -351,7 +354,7 @@ mod tests {
             &mut incons,
             1.0,
         );
-        assert_eq!(incons.contains(&s), true);
+        assert!(incons.contains(&s));
     }
 
     #[test]

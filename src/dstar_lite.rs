@@ -35,10 +35,10 @@ fn update_state<PS: planner::ProblemSpace>(
                 tmp = item.1 + data[&item.0].g;
             }
         }
-        data.get_mut(&s).unwrap().rhs = tmp;
+        data.get_mut(&s).expect("State not in data").rhs = tmp;
     }
     open.retain(|e| e.state != s);
-    if data[&s].g as i64 != data[&s].rhs as i64 {
+    if (data[&s].g - data[&s].rhs).abs() > f64::EPSILON {
         open.push(util::HeapEntry::new_entry(
             s,
             key(&data[&s], ps.heuristic(&s, &start)),
@@ -54,14 +54,15 @@ fn compute_path<PS: planner::ProblemSpace>(
     open: &mut collections::BinaryHeap<util::HeapEntry<PS::State>>,
 ) {
     while (!open.is_empty())
-        && ((open.peek().unwrap().keys < key(&data[&start], ps.heuristic(&start, &start)))
-            || (data[&start].rhs as i64 != data[&start].g as i64))
+        && ((open.peek().expect("Open set is empty").keys
+            < key(&data[&start], ps.heuristic(&start, &start)))
+            || ((data[&start].rhs - data[&start].g).abs() > f64::EPSILON))
     {
-        let s: util::HeapEntry<PS::State> = open.pop().unwrap();
+        let s: util::HeapEntry<PS::State> = open.pop().expect("Open set is empty");
         if data[&s.state].g > data[&s.state].rhs {
-            data.get_mut(&s.state).unwrap().g = data[&s.state].rhs;
+            data.get_mut(&s.state).expect("State not in data").g = data[&s.state].rhs;
         } else {
-            data.get_mut(&s.state).unwrap().g = f64::INFINITY;
+            data.get_mut(&s.state).expect("State not in data").g = f64::INFINITY;
             update_state(ps, s.state, start, goal, data, open);
         }
         for (s_dash, _) in ps.pred(&s.state) {
@@ -137,7 +138,9 @@ pub fn solve<PS: planner::ProblemSpace + planner::Lifelong>(
     compute_path(ps, start_int, goal, &mut data, &mut open);
     publish_path(ps, start_int, goal, &mut data, callback);
     loop {
-        let (u, new_start) = rx.recv().unwrap();
+        let (u, new_start) = rx
+            .recv()
+            .expect("Channel closed unexpectedly - D*Lite requires updates to continue");
         if new_start == goal {
             break;
         }
@@ -327,7 +330,7 @@ mod tests {
         // s not visited...
         let s = 1;
         dstar_lite::update_state(&mut ps, s, start, goal, &mut data, &mut open);
-        assert_eq!(data.contains_key(&s), true);
+        assert!(data.contains_key(&s));
 
         // s != goal
         let s = 2;
@@ -341,7 +344,7 @@ mod tests {
                 contains = true;
             }
         }
-        assert_eq!(contains, true);
+        assert!(contains);
     }
 
     #[test]

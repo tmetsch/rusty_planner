@@ -18,13 +18,17 @@ impl<S> HeapEntry<S> {
     }
 }
 
+const KEY_SCALE: f64 = 1024.0 * 1024.0;
+
 impl<S> PartialEq for HeapEntry<S> {
     fn eq(&self, other: &HeapEntry<S>) -> bool {
-        let s_k0 = (self.keys.0 * 1024.0 * 1024.0).round() as i64;
-        let s_k1 = (self.keys.1 * 1024.0 * 1024.0).round() as i64;
-        let o_k0 = (other.keys.0 * 1024.0 * 1024.0).round() as i64;
-        let o_k1 = (other.keys.1 * 1024.0 * 1024.0).round() as i64;
-        (s_k0, s_k1) == (o_k0, o_k1)
+        let s_k0 = (self.keys.0 * KEY_SCALE).round();
+        let s_k1 = (self.keys.1 * KEY_SCALE).round();
+        let o_k0 = (other.keys.0 * KEY_SCALE).round();
+        let o_k1 = (other.keys.1 * KEY_SCALE).round();
+
+        // Use f64 comparison to avoid integer overflow
+        (s_k0 - o_k0).abs() < f64::EPSILON && (s_k1 - o_k1).abs() < f64::EPSILON
     }
 }
 
@@ -38,12 +42,21 @@ impl<S> PartialOrd for HeapEntry<S> {
 
 impl<S> Ord for HeapEntry<S> {
     fn cmp(&self, other: &HeapEntry<S>) -> cmp::Ordering {
-        // Lexigraphic order - first k_0, otherwise k_1
-        let s_k0 = (self.keys.0 * 1024.0 * 1024.0).round() as i64;
-        let s_k1 = (self.keys.1 * 1024.0 * 1024.0).round() as i64;
-        let o_k0 = (other.keys.0 * 1024.0 * 1024.0).round() as i64;
-        let o_k1 = (other.keys.1 * 1024.0 * 1024.0).round() as i64;
-        o_k0.cmp(&s_k0).then_with(|| o_k1.cmp(&s_k1))
+        // Lexicographic order - first k_0, otherwise k_1
+        // Scale and compare as f64 to maintain precision
+        let s_k0 = self.keys.0 * KEY_SCALE;
+        let s_k1 = self.keys.1 * KEY_SCALE;
+        let o_k0 = other.keys.0 * KEY_SCALE;
+        let o_k1 = other.keys.1 * KEY_SCALE;
+
+        // Compare with epsilon tolerance
+        if (s_k0 - o_k0).abs() > f64::EPSILON {
+            o_k0.partial_cmp(&s_k0).unwrap()
+        } else if (s_k1 - o_k1).abs() > f64::EPSILON {
+            o_k1.partial_cmp(&s_k1).unwrap()
+        } else {
+            cmp::Ordering::Equal
+        }
     }
 }
 

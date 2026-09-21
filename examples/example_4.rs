@@ -142,7 +142,7 @@ fn main() {
     let start = (0, 0);
     let goal = (2, 2);
     let res = mad_astar::solve(&agent, &ps, start, goal);
-    agent.send_msg(&ep, &agent::Msg::Kill());
+    let _ = agent.send_msg(&ep, &agent::Msg::Kill());
     ths.0.join().unwrap();
     ths.1.join().unwrap();
 
